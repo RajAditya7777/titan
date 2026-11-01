@@ -104,6 +104,10 @@ test("Demo A: onboarding tour walks pages and obeys 'stop'", async ({ page }) =>
   await cmd.fill("stop");
   await cmd.press("Enter");
   await expect(page.getByTestId("guidance-bar")).toHaveCount(0);
+  // "Bar gone" is also true for a crashed page (a real regression once), so prove the page lived.
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByText("This page couldn’t load")).toHaveCount(0);
+  await expect(page.getByTestId("companion-pet")).toBeVisible();
 });
 
 test("marketing home shows live protocol numbers and opens the app", async ({ page }) => {
@@ -127,4 +131,21 @@ test("USDT+ page gives a live quote and never signs", async ({ page }) => {
   await page.goto("/usdt?tab=redeem");
   await expect(page.getByRole("button", { name: "Enter an amount" })).toBeVisible();
   await expect(page.locator('label[for="amount"]')).toHaveText("You redeem");
+});
+
+test("a new user (no deposit) gets one button that starts the guided tour", async ({ page }) => {
+  await page.goto("/dashboard");
+  const help = page.getByTestId("new-user-help");
+  await expect(help).toContainText("You haven't deposited yet");
+  await page.getByTestId("new-user-guide").click();
+  await expect(page.getByTestId("guidance-bar")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("guidance-bar")).toContainText("Welcome tour");
+  await expect(help).toHaveCount(0); // steps aside while guiding
+  await page.getByTestId("guide-stop").click();
+
+  // "Not now" is remembered for this visitor.
+  await expect(help).toBeVisible();
+  await help.getByRole("button", { name: "Not now" }).click();
+  await page.reload();
+  await expect(page.getByTestId("new-user-help")).toHaveCount(0);
 });

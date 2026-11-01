@@ -67,6 +67,7 @@ export const ELEMENTS = {
   "dashboard-balance": { page: "dashboard", kind: "display", label: "Total balance", description: "The value of everything you hold in Reflect, in US dollars. This is demo data since no wallet is connected." },
   "dashboard-apy": { page: "dashboard", kind: "display", label: "Live APY", description: "APY is the yearly yield, including compounding. It's live from Reflect and changes with Solana lending rates, so it's not guaranteed." },
   "dashboard-stablecoins": { page: "dashboard", kind: "section", label: "Stablecoins", description: "The yield-bearing dollars Reflect offers. USDC+ is live; each one grows in value against the dollar it's backed by." },
+  "dashboard-new-user": { page: "dashboard", kind: "section", label: "New user help", description: "If you haven't deposited yet, this starts a guided first deposit. I point at each step and you approve everything in your own wallet." },
   "dashboard-mint": { page: "dashboard", kind: "button", label: "Mint", description: "Start minting: deposit USDC and receive USDC+." },
   "dashboard-redeem": { page: "dashboard", kind: "button", label: "Redeem", description: "Swap USDC+ back to USDC whenever you like." },
   "dashboard-activity": { page: "dashboard", kind: "section", label: "Recent activity", description: "The latest real mints and redeems on Reflect, straight from the chain." },
