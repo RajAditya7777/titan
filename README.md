@@ -57,8 +57,23 @@ pnpm e2e                         # Playwright: 3 demos + safety, against the LIV
 | Integration checker, error explainer | **Derived**: rules from the OpenAPI spec, the agent skill, and observed API errors |
 | Balances, portfolio, personal history | **Mocked**, labelled "Demo data" (no wallet connection) |
 | Wallet signing, whitelabel deployment, restaking | **Unavailable by design**: the companion stops before them |
-| LLM | Any OpenAI-compatible endpoint, else the **offline rules** planner |
-| Voice | Browser Web Speech API (STT + TTS) behind swappable adapters |
+| LLM | Any OpenAI-compatible endpoint (tested: Groq `qwen/qwen3.8-27b`), else the **offline rules** planner |
+| Voice input | **Server Whisper** (`/api/stt`, any browser with a mic) when `STT_MODEL` is set, else browser Web Speech |
+| Voice output | Browser speech synthesis; **server neural TTS** (`/api/tts`) when `TTS_MODEL` is set |
+
+## LLM and voice setup (Groq example)
+
+In `apps/web/.env.local` (gitignored, never commit keys):
+
+```bash
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=<your key>
+LLM_MODEL=qwen/qwen3.8-27b
+STT_MODEL=whisper-large-v3-turbo
+# TTS_MODEL=canopylabs/orpheus-v1-english   # accept the model terms on console.groq.com first
+```
+
+Why qwen and not `gpt-oss-120b`: on Groq, gpt-oss regularly produced invalid tool calls in the round after a tool result (calls to non-existent tools, broken JSON), and Groq rejects those server-side. qwen passed the same two-round test reliably. Free-tier keys are capped at 8k tokens/minute, so the orchestrator sends only the tools relevant to the question and a compact prompt.
 
 ## The companion
 

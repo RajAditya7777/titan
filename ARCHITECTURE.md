@@ -50,6 +50,29 @@
 - **MCP child crashes:** the connection is dropped on close, and the next call respawns it. `MCP_TRANSPORT=inprocess` covers platforms without child processes (serverless).
 - **DOM changes:** missing elements are awaited (MutationObserver, 4s), then reported with Skip/Stop. The pet goes home if its target unmounts.
 
+## Voice pipeline
+
+```
+mic ─► (server STT) MediaRecorder + voice-activity detection ─► POST /api/stt ─► Whisper (+ domain vocabulary)
+    └► (fallback)   Web Speech recognition (Chrome/Edge)
+                 ─► local command parser (stop / next / yes …) ─► LLM turn ─► speech text (Markdown stripped, ≤3 sentences)
+                 ─► (server TTS) POST /api/tts ─► neural voice   └► (fallback) browser speech synthesis
+```
+
+- **Engine selection:** `GET /api/voice` reports which server engines are configured; the client picks server engines when available and falls back per engine. A failing server TTS call falls back to the browser voice for that sentence, so a provider hiccup lowers quality instead of breaking the conversation.
+- **Accuracy:** Whisper gets a vocabulary prompt, silence hallucinations ("Thank you.") are dropped, and a few context-bound corrections fix product words ("mend 100" → "mint 100", but "I changed my mind" stays).
+- **Echo:** the mic uses browser echo cancellation; with Web Speech, an overlap heuristic ignores the companion's own words. Typed input bypasses it.
+
+## Cost and abuse controls
+
+- Per-client token-bucket limits: companion 8 burst / 30 per minute, STT 6 / 20, TTS 10 / 40, MCP bridge 30 / 120. 429 responses carry `retry-after`.
+- Input caps: audio ≤ 2 MB and audio MIME types only; TTS text ≤ 600 chars; utterances ≤ 1,000 chars.
+- Limits are per process, in memory. Multiple instances need a shared store (Redis).
+
+## Warm start
+
+`instrumentation.ts` connects MCP at server boot and refreshes the overview and stats every 60 s, so the first page view and the first answer hit a warm cache, and the stale-if-error fallback always has recent data.
+
 ## What could break it later
 
 - **Upstream contract drift.** Zod schemas turn drift into `INVALID_RESPONSE` instead of wrong numbers, and the unit inferences (APY in bps, limits in whole tokens) are documented in RESEARCH.md and should be confirmed with Reflect.
