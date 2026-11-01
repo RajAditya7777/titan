@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { clientKey, limiter, tooMany } from "@/lib/server/rate-limit";
 import { BROWSER_CALLABLE_TOOLS } from "@/lib/companion/actions";
 import { callTool, listTools } from "@/lib/server/mcp-client";
 
@@ -12,6 +13,9 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  // Protects the LLM / upstream quota from scripts; generous enough for a real conversation.
+  const rl = limiter("mcp", { burst: 30, perMinute: 120 }).take(clientKey(req));
+  if (!rl.ok) return tooMany(rl.retryAfterMs);
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: false, error: { code: "INVALID_INPUT", message: "Tool not allowed or bad arguments" } }, { status: 400 });
   const outcome = await callTool(parsed.data.tool, parsed.data.args);
