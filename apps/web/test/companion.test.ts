@@ -26,7 +26,7 @@ describe("registry", () => {
   });
 
   it("maps paths to pages", () => {
-    expect(pageForPath("/")).toBe("dashboard");
+    expect(pageForPath("/dashboard")).toBe("dashboard");
     expect(pageForPath("/stablecoins/usdc-plus")).toBe("stablecoin");
     expect(pageForPath("/mint")).toBe("mint");
   });

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function openCompanion(page: Page) {
-  await page.goto("/");
+  await page.goto("/dashboard");
   await page.getByTestId("companion-pet").click();
   await page.getByRole("button", { name: "Mute voice" }).click(); // deterministic pacing, no audio in CI
 }
@@ -30,7 +30,7 @@ test("browser bridge refuses tools outside the read-only allow-list", async ({ r
 });
 
 test("the pet persists across client-side navigation", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/dashboard");
   await page.getByTestId("companion-pet").evaluate((el) => ((window as any).__pet = el));
   await page.locator('[data-companion="nav-mint"]').click();
   await expect(page).toHaveURL(/\/mint$/);
@@ -104,4 +104,27 @@ test("Demo A: onboarding tour walks pages and obeys 'stop'", async ({ page }) =>
   await cmd.fill("stop");
   await cmd.press("Enter");
   await expect(page.getByTestId("guidance-bar")).toHaveCount(0);
+});
+
+test("marketing home shows live protocol numbers and opens the app", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("save for you");
+  await expect(page.locator('[data-companion="home-stats"]')).toContainText("USDC+ APY");
+  await page.locator('[data-companion="site-launch-app"]').click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
+
+test("USDT+ page gives a live quote and never signs", async ({ page }) => {
+  await page.goto("/usdt");
+  await page.locator('[data-companion="usdt-amount"]').fill("100");
+  await expect(page.locator('[data-companion="usdt-quote"]')).toContainText(/\d+\.\d+/, { timeout: 45_000 });
+  await page.locator('[data-companion="usdt-review"]').click();
+  const dialog = page.getByRole("dialog", { name: "Review mint" });
+  await expect(dialog).toContainText("USDT+");
+  await page.locator('[data-companion="usdt-sign"]').click();
+  await expect(dialog).toContainText("nothing is signed or sent");
+  // Redeem is its own addressable tab.
+  await page.goto("/usdt?tab=redeem");
+  await expect(page.getByRole("button", { name: "Enter an amount" })).toBeVisible();
+  await expect(page.locator('label[for="amount"]')).toHaveText("You redeem");
 });

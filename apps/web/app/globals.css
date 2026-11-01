@@ -1,15 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  /* Visual language observed on reflect.money: ink + Reflect blue + pale-blue accent. */
-  --bg: #0e1115;
-  --surface: #15191f;
-  --surface-2: #1b2027;
-  --line: rgba(255, 255, 255, 0.08);
-  --text: #f3f5f7;
-  --muted: #8c96a1;
+  /* Tokens measured from app.reflect.money's public UI (light theme). Original implementation. */
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --surface-2: #eef0f2;
+  --line: rgba(17, 21, 25, 0.1);
+  --line-strong: rgba(17, 21, 25, 0.15);
+  --text: #111519;
+  --muted: #546475;
+  --ink: #111519;
   --accent: #0058b2;
-  --accent-2: #b9d3f0;
+  --accent-2: #3b8bea;
+  --accent-soft: #e6f0fa;
+  --good: #0f8a5f;
+  --bad: #c2334d;
+  /* Companion surfaces stay dark ink, so the guide reads as its own layer above the app. */
+  --c-surface: #111519;
+  --c-surface-2: #1b2027;
+  --c-muted: #9aa5b1;
   /* Pet palette, aligned to the brand blue */
   --pet-1: #d6e8ff;
   --pet-2: #6aa8f0;
@@ -17,8 +26,6 @@
   --pet-4: #0a3d7a;
   --pet-arm: #2f7fe0;
   --pet-hand: #cfe3fb;
-  --good: #34d399;
-  --bad: #fb7185;
 }
 
 @theme inline {
@@ -27,24 +34,26 @@
   --color-surface-2: var(--surface-2);
   --color-line: var(--line);
   --color-muted: var(--muted);
+  --color-ink: var(--ink);
   --color-accent: var(--accent);
-  --color-accent-2: var(--accent-2);
   --font-sans: var(--font-ui);
   --font-mono: var(--font-num);
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  background:
-    radial-gradient(1100px 520px at 50% -12%, rgba(185, 211, 240, 0.10), transparent 62%),
-    radial-gradient(900px 500px at 100% 110%, rgba(0, 88, 178, 0.10), transparent 60%),
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2 {
+  letter-spacing: -0.03em;
 }
 
 .num {
@@ -53,15 +62,26 @@ body {
   letter-spacing: -0.01em;
 }
 
-h1 {
-  letter-spacing: -0.045em;
-  font-weight: 500;
-}
-
 .card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(17, 21, 25, 0.04), 0 8px 24px -12px rgba(17, 21, 25, 0.08);
+}
+
+/* Shimmer for loading states: smoother than a flat pulse. */
+.shimmer {
+  background: linear-gradient(90deg, var(--surface-2) 0%, #f8f9fa 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

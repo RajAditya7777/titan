@@ -5,7 +5,19 @@
  */
 
 export const PAGES = {
-  dashboard: { path: "/", title: "Dashboard", summary: "Your balances, the live USDC+ yield and recent protocol activity." },
+  // Marketing site (modelled on reflect.money's information architecture, original content)
+  home: { path: "/", title: "Home", summary: "What Reflect is: earn on stablecoins, create a branded savings product, protect tokenised assets." },
+  earn: { path: "/earn", title: "Earn", summary: "How USDC+ and USDT+ earn yield from diversified, over-collateralised lending." },
+  create: { path: "/create", title: "Create", summary: "Launch your own branded stablecoin savings product on Reflect." },
+  calculator: { path: "/create/calculator", title: "Revenue calculator", summary: "Estimate what a branded savings product could earn you and your users." },
+  protect: { path: "/protect", title: "Protect", summary: "Split a tokenised asset into a protected senior tranche and an amplified junior tranche." },
+  build: { path: "/build", title: "Build", summary: "The Reflect REST API and how developers integrate it." },
+  assets: { path: "/assets", title: "Assets", summary: "Every Reflect asset: plain yield stablecoins and protected or amplified tranches." },
+  caseStudies: { path: "/case-studies", title: "Case studies", summary: "How asset issuers use Reflect, in short." },
+  privacy: { path: "/privacy", title: "Privacy", summary: "What this demo does and does not collect." },
+  // App
+  usdt: { path: "/usdt", title: "USDT+", summary: "Mint or redeem USDT+ with a live quote, and read its details." },
+  dashboard: { path: "/dashboard", title: "Dashboard", summary: "Your balances, the live USDC+ yield and recent protocol activity." },
   stablecoin: { path: "/stablecoins/usdc-plus", title: "USDC+", summary: "What USDC+ is, its live APY, exchange rate, supply and risks." },
   mint: { path: "/mint", title: "Mint", summary: "Deposit USDC to receive yield-bearing USDC+." },
   redeem: { path: "/redeem", title: "Redeem", summary: "Burn USDC+ to get USDC back, including the yield it earned." },
@@ -20,10 +32,12 @@ export const PAGE_IDS = Object.keys(PAGES) as PageId[];
 export type ElementKind = "nav" | "button" | "input" | "select" | "display" | "section";
 
 /** Validation rules the guide can check without the LLM. */
-export type ValidationRule = "positive-amount" | "token-name" | "token-symbol" | "fee-bps" | "non-empty";
+export type ValidationRule = "positive-amount" | "capital" | "token-name" | "token-symbol" | "fee-bps" | "non-empty";
 
 export interface ElementSpec {
   page: PageId | "global";
+  /** For global elements: which chrome renders them (the app's tab bar or the marketing header). */
+  layout?: "app" | "site";
   kind: ElementKind;
   label: string;
   /** What the companion says when asked "what is this?". */
@@ -40,13 +54,14 @@ export interface ElementSpec {
 
 export const ELEMENTS = {
   // Global navigation
-  "nav-dashboard": { page: "global", kind: "nav", label: "Dashboard", description: "Go back to your overview." },
-  "nav-stablecoin": { page: "global", kind: "nav", label: "Stablecoins", description: "Learn about USDC+ and its live yield." },
-  "nav-mint": { page: "global", kind: "nav", label: "Mint", description: "Turn USDC into yield-bearing USDC+." },
-  "nav-redeem": { page: "global", kind: "nav", label: "Redeem", description: "Turn USDC+ back into USDC." },
-  "nav-whitelabel": { page: "global", kind: "nav", label: "Whitelabel", description: "Create your own branded yieldcoin." },
-  "nav-portfolio": { page: "global", kind: "nav", label: "Portfolio", description: "See what you hold and what you've earned." },
-  "nav-stats": { page: "global", kind: "nav", label: "Statistics", description: "Protocol-wide numbers, live." },
+  "nav-dashboard": { page: "global", layout: "app", kind: "nav", label: "Dashboard", description: "Go back to your overview." },
+  "nav-stablecoin": { page: "global", layout: "app", kind: "nav", label: "Stablecoins", description: "Learn about USDC+ and its live yield." },
+  "nav-usdt": { page: "global", layout: "app", kind: "nav", label: "USDT+", description: "Mint or redeem USDT+, with a live quote." },
+  "nav-mint": { page: "global", layout: "app", kind: "nav", label: "Mint", description: "Turn USDC into yield-bearing USDC+." },
+  "nav-redeem": { page: "global", layout: "app", kind: "nav", label: "Redeem", description: "Turn USDC+ back into USDC." },
+  "nav-whitelabel": { page: "global", layout: "app", kind: "nav", label: "Whitelabel", description: "Create your own branded yieldcoin." },
+  "nav-portfolio": { page: "global", layout: "app", kind: "nav", label: "Portfolio", description: "See what you hold and what you've earned." },
+  "nav-stats": { page: "global", layout: "app", kind: "nav", label: "Statistics", description: "Protocol-wide numbers, live." },
 
   // Dashboard
   "dashboard-balance": { page: "dashboard", kind: "display", label: "Total balance", description: "The value of everything you hold in Reflect, in US dollars. This is demo data since no wallet is connected." },
@@ -92,6 +107,28 @@ export const ELEMENTS = {
   "portfolio-yield": { page: "portfolio", kind: "section", label: "Yield earned", description: "How your balance grew from yield over time (demo data)." },
   "stats-metrics": { page: "stats", kind: "section", label: "Protocol metrics", description: "Live holders, supply and volume." },
   "stats-apy-history": { page: "stats", kind: "section", label: "APY history", description: "How USDC+ yield moved day by day." },
+
+  // Marketing site
+  "site-launch-app": { page: "global", layout: "site", kind: "nav", label: "Open app", description: "Open the app, where you can get quotes and walk through minting." },
+  "home-yield-sim": { page: "home", kind: "section", label: "Yield preview", description: "Shows how a balance would grow at today's live USDC+ rate. It's an estimate: the rate is variable." },
+  "home-builder": { page: "home", kind: "section", label: "Savings builder", description: "A preview of a branded savings account built on Reflect stablecoins." },
+  "home-tranche-sim": { page: "home", kind: "section", label: "Protection preview", description: "An example pool split into a protected senior part and an amplified junior part. Move the loss slider to see who absorbs it first." },
+  "home-stats": { page: "home", kind: "section", label: "Protocol numbers", description: "Live protocol totals from Reflect's public API." },
+  "earn-apy": { page: "earn", kind: "display", label: "Live APYs", description: "Today's variable APY for each Reflect stablecoin, live from the API." },
+  "calc-deposits": { page: "calculator", kind: "input", label: "Expected deposits", description: "How many dollars you expect users to deposit into your product.", validation: "capital", fillable: true },
+  "calc-fee": { page: "calculator", kind: "input", label: "Your fee", description: "Your share of the yield in basis points. 100 bps is 1% of the yield, not of deposits.", validation: "fee-bps", fillable: true },
+  "calc-result": { page: "calculator", kind: "display", label: "Estimated revenue", description: "Your yearly revenue and your users' net APY, estimated from today's live APY." },
+  "protect-sim": { page: "protect", kind: "section", label: "Loss simulator", description: "Drag the loss to see how the junior tranche absorbs it before the senior tranche is touched." },
+  "build-endpoints": { page: "build", kind: "section", label: "API endpoints", description: "The main Reflect API endpoints, grouped by product." },
+  "assets-list": { page: "assets", kind: "section", label: "Asset list", description: "Each Reflect asset with its family and what backs it." },
+
+  // USDT+ app page
+  "usdt-details": { page: "usdt", kind: "section", label: "Details", description: "Live APY, exchange rate and supply for USDT+, straight from Reflect." },
+  "usdt-amount": { page: "usdt", kind: "input", label: "Amount", description: "How much to deposit or redeem.", validation: "positive-amount", fillable: true },
+  "usdt-quote": { page: "usdt", kind: "display", label: "You receive", description: "The live quote from Reflect for the amount you entered." },
+  "usdt-review": { page: "usdt", kind: "button", label: "Review", description: "Opens a summary before anything is signed.", sensitive: true },
+  "usdt-sign": { page: "usdt", kind: "button", label: "Approve in wallet", description: "Your wallet signs. Only you can do this. The companion never will.", sensitive: true },
+  "usdt-faq": { page: "usdt", kind: "section", label: "FAQs", description: "Short answers about where the yield comes from and the risks." },
 } as const satisfies Record<string, ElementSpec>;
 
 export type ElementId = keyof typeof ELEMENTS;
@@ -101,16 +138,28 @@ export function getElement(id: string): (ElementSpec & { id: ElementId }) | null
   return id in ELEMENTS ? { id: id as ElementId, ...(ELEMENTS as Record<string, ElementSpec>)[id]! } : null;
 }
 
+/** Detail routes inherit their index page; anything unknown falls back to the marketing home. */
+const PREFIXES: [string, PageId][] = [
+  ["/stablecoins/", "stablecoin"],
+  ["/assets/", "assets"],
+  ["/case-studies/", "caseStudies"],
+];
+
 export function pageForPath(pathname: string): PageId {
-  if (pathname.startsWith("/stablecoins")) return "stablecoin";
-  const hit = PAGE_IDS.find((p) => PAGES[p].path === pathname);
-  return hit ?? "dashboard";
+  const exact = PAGE_IDS.find((p) => PAGES[p].path === pathname);
+  if (exact) return exact;
+  return PREFIXES.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? "home";
 }
 
+/** Which layout a page lives in. The marketing site has no app navigation. */
+export const SITE_PAGES = ["home", "earn", "create", "calculator", "protect", "build", "assets", "caseStudies", "privacy"] as const satisfies readonly PageId[];
+export const isSitePage = (page: PageId) => (SITE_PAGES as readonly PageId[]).includes(page);
+
 export function elementsOnPage(page: PageId) {
+  const layout = isSitePage(page) ? "site" : "app";
   return ELEMENT_IDS.filter((id) => {
-    const p = ELEMENTS[id].page;
-    return p === page || p === "global";
+    const el: ElementSpec = ELEMENTS[id];
+    return el.page === page || (el.page === "global" && (el.layout ?? layout) === layout);
   });
 }
 
@@ -122,6 +171,10 @@ export function validate(rule: ValidationRule, value: string): string | null {
     case "positive-amount":
       if (!/^\d+(\.\d{1,6})?$/.test(v) || Number(v) <= 0) return "Enter an amount above zero (max 6 decimals).";
       if (Number(v) > 1_000_000) return "That's above this demo's 1,000,000 limit.";
+      return null;
+    case "capital":
+      if (!/^\d+(\.\d{1,2})?$/.test(v) || Number(v) <= 0) return "Enter a dollar amount above zero.";
+      if (Number(v) > 10_000_000_000) return "Keep it under $10 billion.";
       return null;
     case "token-name":
       if (v.length < 3 || v.length > 32) return "Use 3–32 characters.";
