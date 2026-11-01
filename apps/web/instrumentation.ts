@@ -19,11 +19,22 @@ export async function register() {
       callTool("reflect_get_protocol_events", { limit: 6 }),
     ]);
     console.info(`[warmup] ${results.map((r) => `${r.tool.replace("reflect_get_", "")}=${r.ok ? "ok" : "fail"}`).join(" ")} ${Date.now() - started}ms`);
+    return results.every((r) => r.ok);
+  };
+
+  // Network can be briefly unavailable right at process start (seen: every upstream call failing
+  // in <40ms on a production boot, succeeding seconds later). Retry soon instead of waiting a minute.
+  const warmWithRetry = async (delays = [5_000, 15_000]) => {
+    if (await warm().catch(() => false)) return;
+    for (const d of delays) {
+      await new Promise((r) => setTimeout(r, d));
+      if (await warm().catch(() => false)) return;
+    }
   };
 
   // Don't block startup. Refreshing once a minute keeps the stale-if-error fallback recent at
   // ~8 upstream requests/minute; matching the 15s cache TTL would quadruple that for little gain.
-  setTimeout(() => void warm().catch(() => {}), 1_000);
+  setTimeout(() => void warmWithRetry(), 1_000);
   const timer = setInterval(() => void warm().catch(() => {}), 60_000);
   timer.unref?.();
 }
