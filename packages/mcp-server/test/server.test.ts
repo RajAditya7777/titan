@@ -132,6 +132,14 @@ describe("Reflect MCP server", () => {
     expect(structured(r).error).toMatchObject({ code: "UPSTREAM_ERROR", retryable: true });
   });
 
+  it("protocol stats: supply is in base units, volume and yield are already USD", async () => {
+    const { client } = await connect();
+    const r = structured(await client.callTool({ name: "reflect_get_protocol_stats", arguments: {} }));
+    expect(r.totalSupply).toBeCloseTo(1_866_486.207333, 6);
+    expect(r.cumulativeVolume).toBe(50_075_793);
+    expect(r.totalYieldDistributed).toBe(830_101);
+  });
+
   it("check_integration flags the stale body shape and 9-decimal mistakes", async () => {
     const { client } = await connect();
     const r = structured(

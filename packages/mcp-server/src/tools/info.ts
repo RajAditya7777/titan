@@ -102,8 +102,10 @@ export const protocolStats = defineTool({
         {
           holders: stats.users,
           totalSupply: fromBaseUnits(stats.supply),
-          cumulativeVolume: fromBaseUnits(stats.cumulativeVolume),
-          totalYieldDistributed: fromBaseUnits(stats.totalYieldDistributed),
+          // Unlike supply, these two arrive in whole USD (upstream 50075793 ↔ "$50.1M" on
+          // reflect.money), so they must not be divided by the token's 10^6 base unit.
+          cumulativeVolume: Number(stats.cumulativeVolume),
+          totalYieldDistributed: Number(stats.totalYieldDistributed),
           history: history
             ? {
                 asset,

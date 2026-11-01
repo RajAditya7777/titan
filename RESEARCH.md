@@ -60,6 +60,7 @@ Live probe results (all unauthenticated):
 3. **APY units.** The spec describes `apy` as "APY as a number" with example `5.25` (a percent). The live value is `172.94`, and `/whitelabel/underlying/apy` returns `apy_bps: 179` for the USDC+ mint at the same moment. **(inferred)** `apy` is in basis points (≈1.73 %). The demo converts bps → % and shows the raw value in tool output.
 4. **`/stablecoin/apy` (all coins) returns 404** while the per-index route works → the MCP tool fans out per index instead.
 5. **`/stats` → `tvl: 1`** while `supply` is `1866486207333` (≈ $1.87 M at 6 decimals). `tvl` looks unpopulated **(inferred)**; the UI shows supply and does not present `tvl` as dollars.
+   `/stats` mixes units: `supply` is in 6-decimal base units, but `cumulativeVolume` (`"50075793"`) and `totalYieldDistributed` (`830101`) are whole USD. reflect.money shows the same values as $50.1M and $830.1K. An earlier version of the MCP tool divided all three by 10^6.
 6. **License.** `agent-skills` README and SKILL frontmatter say MIT; the repo's `LICENSE` file is **GPL-3.0**. We do not copy code from it; we only cite it.
 7. **Closed beta.** Per the skill, users must be whitelisted before transacting. A prepared mint tx for a non-whitelisted wallet may fail on-chain.
 
