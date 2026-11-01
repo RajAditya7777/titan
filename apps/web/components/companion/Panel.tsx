@@ -87,8 +87,19 @@ function FullPanel() {
         >
           <Cpu size={11} /> {c.engine === "llm" ? "LLM" : c.engine === "rules" ? "Offline rules" : "…"}
         </span>
-        <button type="button" onClick={() => c.setMuted(!c.voice.muted)} className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]" aria-label={c.voice.muted ? "Unmute voice" : "Mute voice"}>
-          {c.voice.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+        <button
+          type="button"
+          data-testid="voice-toggle"
+          onClick={() => c.setMuted(!c.voice.muted)}
+          title={c.voice.muted ? "Text only. Click to hear the guide again" : "Turn the guide's voice off (text only)"}
+          className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition ${
+            c.voice.muted
+              ? "border-[var(--line-strong)] text-[var(--muted)] hover:text-[var(--text)]"
+              : "border-transparent bg-[var(--accent-soft)] text-[var(--accent)] hover:brightness-95"
+          }`}
+        >
+          {c.voice.muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+          {c.voice.muted ? "Voice off" : "Voice on"}
         </button>
         <button type="button" onClick={() => c.setPanelOpen(false)} className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]" aria-label="Close">
           <X size={16} />

@@ -15,9 +15,13 @@
   --accent-soft: #e6f0fa;
   --good: #0f8a5f;
   --bad: #c2334d;
-  /* Pet: a flat warm terracotta body with near-black pixel eyes. */
-  --pet-body: #d97757;
-  --pet-eye: #1c1410;
+  /* Pet: a husky-style pup in Reflect's blues (navy coat, ice-white face, bright blue eyes). */
+  --pet-outline: #0f2236;
+  --pet-dark: #1f4f86;
+  --pet-mid: #6f9fd8;
+  --pet-light: #f3f7fc;
+  --pet-pink: #f4a6b7;
+  --pet-iris: #3b8bea;
 }
 
 @theme inline {

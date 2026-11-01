@@ -9,6 +9,8 @@ import { BrowserSpeechToText, BrowserTextToSpeech, isLikelyEcho, type SpeechToTe
 import { createVoiceEngines } from "@/lib/companion/voice-server";
 import { setMicLevel } from "@/lib/companion/mic-level";
 
+const MUTE_KEY = "reflect.voice.muted";
+
 // ───────────────────────────── Types ─────────────────────────────
 
 export type PetState =
@@ -550,6 +552,19 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
     [addMessage, cancel, highlight, speak, startWorkflow, stopSpeaking],
   );
 
+  const setMuted = useCallback((m: boolean) => {
+    setMutedState(m);
+    try {
+      localStorage.setItem(MUTE_KEY, m ? "1" : "0");
+    } catch {
+      /* per-visitor convenience only */
+    }
+    if (tts.current) {
+      tts.current.muted = m;
+      if (m) tts.current.cancel();
+    }
+  }, []);
+
   /** Local control commands first (instant, offline), then the LLM. */
   const handleControl = useCallback(
     (cmd: ControlCommand): boolean => {
@@ -561,6 +576,14 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
             stopSpeaking();
             goHome();
           }
+          return true;
+        case "mute":
+          setMuted(true);
+          addMessage("assistant", "Voice off. I'll show everything as text. Say \"voice on\" to hear me again.");
+          return true;
+        case "unmute":
+          setMuted(false);
+          void speak("Voice is back on.");
           return true;
         case "repeat":
           repeat();
@@ -605,7 +628,7 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [back, cancel, completeStep, confirmOffer, explain, goHome, repeat, restart, retry, speak, stopSpeaking],
+    [addMessage, back, cancel, completeStep, confirmOffer, explain, goHome, repeat, restart, retry, setMuted, speak, stopSpeaking],
   );
 
   const handleUtterance = useCallback(
@@ -618,7 +641,7 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
       if (speaking) {
         // Barge-in: while talking, only accept clear commands that aren't our own echo.
         // "stop"/"cancel" always win.
-        if (cmd?.kind === "stop") return void handleControl(cmd);
+        if (cmd?.kind === "stop" || cmd?.kind === "mute") return void handleControl(cmd);
         // The echo filter exists for the microphone only: typed text can't be our own voice.
         if (source === "voice" && isLikelyEcho(text, speaking)) return;
         stopSpeaking();
@@ -638,6 +661,15 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
     let disposed = false;
     // Start on the browser engines so voice works instantly; upgrade to server engines below.
     tts.current = new BrowserTextToSpeech();
+    // "Voice off" is remembered: someone who wants text only shouldn't have to mute on every visit.
+    try {
+      if (localStorage.getItem(MUTE_KEY) === "1") {
+        tts.current.muted = true;
+        setMutedState(true);
+      }
+    } catch {
+      /* storage blocked: default to voice on */
+    }
     const wire = (rec: SpeechToText & { onLevel?: (level: number) => void }) => {
     rec.onLevel = setMicLevel;
     rec.onStateChange = (on) => {
@@ -710,14 +742,6 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
       setPetState("listening");
     }
   }, [handsFree, listening, stopSpeaking]);
-
-  const setMuted = useCallback((m: boolean) => {
-    setMutedState(m);
-    if (tts.current) {
-      tts.current.muted = m;
-      if (m) tts.current.cancel();
-    }
-  }, []);
 
   // Escape always stops guidance (keyboard parity with "stop").
   useEffect(() => {

@@ -14,7 +14,9 @@
   "dependencies": {
     "@companion/mcp-server": "workspace:*",
     "@companion/reflect-api": "workspace:*",
+    "@huggingface/transformers": "3.8.1",
     "@modelcontextprotocol/sdk": "1.32.2",
+    "kokoro-js": "1.2.1",
     "lucide-react": "1.66.0",
     "motion": "14.9.0",
     "next": "16.4.3",

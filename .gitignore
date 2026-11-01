@@ -9,3 +9,4 @@ playwright-report
 .DS_Store
 *.tsbuildinfo
 apps/web/demo-videos/raw
+apps/web/.models

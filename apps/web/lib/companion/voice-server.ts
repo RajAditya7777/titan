@@ -1,6 +1,6 @@
 "use client";
 
-import { BrowserSpeechToText, BrowserTextToSpeech, type SpeechToText, type TextToSpeech } from "./voice";
+import { BrowserSpeechToText, BrowserTextToSpeech, VOICE_LOCALE, type SpeechToText, type TextToSpeech } from "./voice";
 
 /**
  * Server-backed voice adapters (Whisper-class STT, neural TTS via our /api routes).
@@ -166,19 +166,38 @@ export class ServerSpeechToText implements SpeechToText {
 // ───────────────────────────── TTS ─────────────────────────────
 
 /**
- * Neural TTS via /api/tts, with automatic fallback to the browser voice if the server call fails,
- * so a provider hiccup degrades the voice quality, never the conversation.
+ * Splits a reply into sentence-sized pieces for pipelined speech: piece 1 plays while piece 2
+ * renders, so the first word is heard after one short synthesis instead of the whole reply's.
+ * Tiny fragments ("Done.") are merged into the next piece, since each request has fixed overhead.
+ * Splits only on punctuation followed by whitespace, so "1.7%" stays intact.
+ */
+export function splitForSpeech(text: string, minChars = 28): string[] {
+  const out: string[] = [];
+  let carry = "";
+  for (const s of text.trim().split(/(?<=[.!?])\s+/)) {
+    carry = carry ? `${carry} ${s}` : s;
+    if (carry.length >= minChars) {
+      out.push(carry);
+      carry = "";
+    }
+  }
+  if (carry) out.length ? (out[out.length - 1] += ` ${carry}`) : out.push(carry);
+  return out.filter(Boolean);
+}
+
+/**
+ * Neural TTS via /api/tts (local Kokoro or a provider), with automatic fallback to the browser
+ * voice if the server call fails, so a hiccup degrades the voice quality, never the conversation.
  */
 export class ServerTextToSpeech implements TextToSpeech {
   readonly supported = typeof window !== "undefined" && typeof Audio !== "undefined";
   muted = false;
-  private audio: HTMLAudioElement | null = null;
   private resolveCurrent: (() => void) | null = null;
   private abort: AbortController | null = null;
   private readonly fallback = new BrowserTextToSpeech();
 
   get speaking() {
-    return this.resolveCurrent !== null;
+    return this.abort !== null || this.fallback.speaking;
   }
 
   async speak(text: string, hooks: { onBoundary?: () => void } = {}): Promise<void> {
@@ -187,38 +206,62 @@ export class ServerTextToSpeech implements TextToSpeech {
       this.fallback.muted = true;
       return this.fallback.speak(text, hooks);
     }
-    this.abort = new AbortController();
-    try {
-      const res = await fetch("/api/tts", {
+    const abort = new AbortController();
+    this.abort = abort;
+    const parts = splitForSpeech(text);
+    const render = (t: string) => {
+      const p = fetch("/api/tts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text }),
-        signal: this.abort.signal,
+        body: JSON.stringify({ text: t }),
+        signal: abort.signal,
+      }).then((res) => {
+        if (!res.ok) throw new Error(`tts ${res.status}`);
+        return res.blob();
       });
-      if (!res.ok) throw new Error(`tts ${res.status}`);
-      const url = URL.createObjectURL(await res.blob());
-      return await new Promise<void>((resolve) => {
-        const audio = new Audio(url);
-        const done = () => {
-          URL.revokeObjectURL(url);
-          if (this.audio === audio) this.audio = null;
-          this.resolveCurrent = null;
-          resolve();
-        };
-        audio.onended = done;
-        audio.onerror = done;
-        this.audio = audio;
-        this.resolveCurrent = () => {
-          audio.pause();
-          done();
-        };
-        void audio.play().catch(done);
-      });
+      p.catch(() => {}); // a prefetch abandoned by cancel() must not surface as an unhandled rejection
+      return p;
+    };
+
+    let i = 0;
+    try {
+      let next = render(parts[0]!);
+      for (; i < parts.length; i++) {
+        const blob = await next;
+        if (abort.signal.aborted) return;
+        if (i + 1 < parts.length) next = render(parts[i + 1]!);
+        hooks.onBoundary?.();
+        await this.play(blob);
+        if (abort.signal.aborted) return;
+      }
     } catch (e) {
-      if ((e as Error).name === "AbortError") return;
+      if (abort.signal.aborted || (e as Error).name === "AbortError") return;
+      // Say whatever is left with the browser voice rather than going silent mid-reply.
       this.fallback.muted = false;
-      return this.fallback.speak(text, hooks);
+      await this.fallback.speak(parts.slice(i).join(" "), hooks);
+    } finally {
+      if (this.abort === abort) this.abort = null;
     }
+  }
+
+  private play(blob: Blob): Promise<void> {
+    const url = URL.createObjectURL(blob);
+    return new Promise<void>((resolve) => {
+      const audio = new Audio(url);
+      const done = () => {
+        URL.revokeObjectURL(url);
+        if (this.resolveCurrent === stop) this.resolveCurrent = null;
+        resolve();
+      };
+      const stop = () => {
+        audio.pause();
+        done();
+      };
+      audio.onended = done;
+      audio.onerror = done;
+      this.resolveCurrent = stop;
+      void audio.play().catch(done);
+    });
   }
 
   cancel() {
@@ -244,7 +287,7 @@ export async function createVoiceEngines(): Promise<{ stt: SpeechToText & { onLe
   const serverStt = new ServerSpeechToText({ continuous: true });
   const useServerStt = caps.stt && serverStt.supported;
   return {
-    stt: useServerStt ? serverStt : new BrowserSpeechToText({ continuous: true }),
+    stt: useServerStt ? serverStt : new BrowserSpeechToText({ continuous: true, lang: VOICE_LOCALE }),
     tts: caps.tts ? new ServerTextToSpeech() : new BrowserTextToSpeech(),
     kind: { stt: useServerStt ? "server" : "browser", tts: caps.tts ? "server" : "browser" },
   };

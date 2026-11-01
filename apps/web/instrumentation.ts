@@ -35,6 +35,19 @@ export async function register() {
   // Don't block startup. Refreshing once a minute keeps the stale-if-error fallback recent at
   // ~8 upstream requests/minute; matching the 15s cache TTL would quadruple that for little gain.
   setTimeout(() => void warmWithRetry(), 1_000);
+
+  // Load the local voice model before the first visitor speaks to the pet (a cold load is seconds).
+  const { ttsEngineFromEnv } = await import("./lib/server/voice");
+  if (ttsEngineFromEnv() === "kokoro") {
+    const { kokoro, kokoroConfigFromEnv } = await import("./lib/server/tts/kokoro");
+    setTimeout(() => {
+      const started = Date.now();
+      kokoro
+        .warm(kokoroConfigFromEnv())
+        .then(() => console.info(`[warmup] tts kokoro ready ${Date.now() - started}ms`))
+        .catch((e: Error) => console.warn(`[warmup] tts kokoro failed (browser voice will be used): ${e.message}`));
+    }, 2_000);
+  }
   const timer = setInterval(() => void warm().catch(() => {}), 60_000);
   timer.unref?.();
 }

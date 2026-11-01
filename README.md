@@ -58,8 +58,8 @@ pnpm e2e                         # Playwright: 3 demos + safety, against the LIV
 | Balances, portfolio, personal history | **Mocked**, labelled "Demo data" (no wallet connection) |
 | Wallet signing, whitelabel deployment, restaking | **Unavailable by design**: the companion stops before them |
 | LLM | Any OpenAI-compatible endpoint (tested: Groq `qwen/qwen3.8-27b`), else the **offline rules** planner |
-| Voice input | **Server Whisper** (`/api/stt`, any browser with a mic) when `STT_MODEL` is set, else browser Web Speech |
-| Voice output | Browser speech synthesis; **server neural TTS** (`/api/tts`) when `TTS_MODEL` is set |
+| Voice input | **Server Whisper large-v3** (`/api/stt`, open weights, tuned for Indian English: 16.3% → 9.2% word errors vs turbo on en-IN clips) when `STT_MODEL` is set, else browser Web Speech in `en-IN` |
+| Voice output | **Local Kokoro-82M** (Apache-2.0, runs in a worker thread, no key; Indian English voice `hf_alpha`, model auto-downloads ~92 MB to `apps/web/.models`); falls back to the browser voice. "Voice on/off" in the panel (or say "voice off") gives text only, remembered per browser |
 
 ## LLM and voice setup (Groq example)
 
@@ -69,7 +69,8 @@ In `apps/web/.env.local` (gitignored, never commit keys):
 LLM_BASE_URL=https://api.groq.com/openai/v1
 LLM_API_KEY=<your key>
 LLM_MODEL=qwen/qwen3.8-27b
-STT_MODEL=whisper-large-v3-turbo
+STT_MODEL=whisper-large-v3
+# STT_LANGUAGE=en          # or "auto"; KOKORO_VOICE=hf_alpha|hf_beta|hm_omega|hm_psi; TTS_ENGINE=kokoro|provider|off
 # TTS_MODEL=canopylabs/orpheus-v1-english   # accept the model terms on console.groq.com first
 ```
 

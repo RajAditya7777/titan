@@ -6,6 +6,8 @@
 
 export type ControlCommand =
   | { kind: "stop" }
+  | { kind: "mute" }
+  | { kind: "unmute" }
   | { kind: "repeat" }
   | { kind: "next" }
   | { kind: "back" }
@@ -16,6 +18,9 @@ export type ControlCommand =
   | { kind: "provide_value"; value: string };
 
 const PATTERNS: [ControlCommand["kind"], RegExp][] = [
+  // Before "stop", so "stop talking" mutes the voice instead of ending the walkthrough.
+  ["mute", /^(mute|voice off|text only|silent mode|be quiet|stop (talking|speaking)|(turn|switch) off (the |your )?voice)\b/],
+  ["unmute", /^(unmute|voice on|(turn|switch) on (the |your )?voice|talk to me again)\b/],
   ["stop", /^(stop|cancel|quit|exit|never ?mind|that'?s enough|end( the)? tour)\b/],
   ["repeat", /^(repeat( that)?|say (that|it) again|what did you say|come again|pardon)\b/],
   ["next", /^(next|skip( this)?( step)?|continue|go on|move on|carry on|done|ok(ay)? next)\b/],

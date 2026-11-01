@@ -3,7 +3,9 @@ import { expect, test, type Page } from "@playwright/test";
 async function openCompanion(page: Page) {
   await page.goto("/dashboard");
   await page.getByTestId("companion-pet").click();
-  await page.getByRole("button", { name: "Mute voice" }).click(); // deterministic pacing, no audio in CI
+  // Voice off: deterministic pacing, no audio in CI. Also proves the toggle works.
+  await page.getByTestId("voice-toggle").click();
+  await expect(page.getByTestId("voice-toggle")).toHaveText("Voice off");
 }
 
 async function ask(page: Page, text: string) {

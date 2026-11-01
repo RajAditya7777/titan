@@ -24,6 +24,13 @@ export interface TextToSpeech {
   readonly speaking: boolean;
 }
 
+/**
+ * Speech locale for the browser engines. Indian English by default: Chrome's en-IN recogniser is
+ * far more accurate on Indian accents than en-US and still handles other English accents.
+ * Override with NEXT_PUBLIC_VOICE_LOCALE (e.g. "en-US").
+ */
+export const VOICE_LOCALE = process.env.NEXT_PUBLIC_VOICE_LOCALE || "en-IN";
+
 // ───────────────────────────── Web Speech: recognition ─────────────────────────────
 
 type RecognitionCtor = new () => {
@@ -59,7 +66,7 @@ export class BrowserSpeechToText implements SpeechToText {
     if (!Ctor) return;
 
     const rec = new Ctor();
-    rec.lang = opts.lang ?? "en-US";
+    rec.lang = opts.lang ?? VOICE_LOCALE;
     rec.continuous = opts.continuous ?? false;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
@@ -127,9 +134,12 @@ export class BrowserTextToSpeech implements TextToSpeech {
     return this.current !== null;
   }
 
-  /** Prefer natural-sounding English voices when the OS provides them. */
+  /** Prefer an Indian English voice (matches the audience), then natural-sounding English ones. */
   private pickVoice(): SpeechSynthesisVoice | undefined {
     const voices = window.speechSynthesis.getVoices();
+    const indian = voices.filter((v) => v.lang.replace("_", "-") === "en-IN");
+    const bestIndian = [/Neerja|Prabhat/i, /Google/i, /Rishi|Veena|Aman|Tara/i].map((re) => indian.find((v) => re.test(v.name))).find(Boolean);
+    if (bestIndian ?? indian[0]) return bestIndian ?? indian[0];
     const preferred = [/Samantha/i, /Google US English/i, /Microsoft (Aria|Jenny)/i, /Ava/i, /Allison/i, /Karen/i, /Daniel/i];
     for (const re of preferred) {
       const v = voices.find((x) => re.test(x.name) && x.lang.startsWith("en"));
