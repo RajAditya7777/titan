@@ -176,7 +176,8 @@ export function PetLayer() {
 
       {/* Speech bubble (also the live caption for TTS) */}
       <AnimatePresence>
-        {bubble && (placement || petState !== "idle") && (
+        {/* At home with the panel open, the panel already shows the words; a bubble would cover them. */}
+        {bubble && (placement || (petState !== "idle" && !panelOpen)) && (
           <motion.div
             key="bubble"
             role="status"

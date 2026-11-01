@@ -8,3 +8,4 @@ playwright-report
 *.log
 .DS_Store
 *.tsbuildinfo
+apps/web/demo-videos/raw
