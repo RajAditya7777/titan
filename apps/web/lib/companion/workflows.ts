@@ -1,4 +1,5 @@
 import type { Workflow } from "./actions";
+import { validate } from "./registry";
 
 /**
  * Hand-authored workflows for the core journeys. The LLM picks one of these and fills its
@@ -92,7 +93,15 @@ export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}): Work
       };
     }
 
-    case "create_whitelabel":
+    case "create_whitelabel": {
+      // Always offer a name and ticker, whichever brain built the plan (the LLM often omits
+      // them), so "yes" has something to confirm. The ticker follows the name when only a name is
+      // given, and only valid suggestions are offered.
+      const tokenName = params.tokenName?.trim() && validate("token-name", params.tokenName.trim()) === null ? params.tokenName.trim() : "Acme Dollar";
+      const derived = tickerFromName(tokenName);
+      const tokenSymbol =
+        params.tokenSymbol && validate("token-symbol", params.tokenSymbol.toUpperCase()) === null ? params.tokenSymbol.toUpperCase() : derived;
+      params = { ...params, tokenName, tokenSymbol };
       return {
         id,
         title: "Create your yieldcoin",
@@ -126,6 +135,7 @@ export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}): Work
           { type: "stop_before_signing", target: "wl-deploy", say: "Deploying creates real on-chain accounts, so it's disabled in this demo. With Reflect's whitelabel API, your wallet would sign this final step." },
         ],
       };
+    }
 
     case "explain_apy":
       return {
@@ -138,4 +148,13 @@ export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}): Work
         ],
       };
   }
+}
+
+/** "Acme Dollar" → "ACMEUSD"; always a valid ticker (2–8 chars, starts with a letter). */
+export function tickerFromName(name: string): string {
+  // Tickers read best from the first word ("Acme Dollar" → ACME…); fall back to all letters if it's tiny.
+  const first = (name.trim().split(/\s+/)[0] ?? "").replace(/[^a-z0-9]/gi, "");
+  const letters = (first.length >= 2 ? first : name.replace(/[^a-z0-9]/gi, "")).toUpperCase();
+  const stem = /^[A-Z]/.test(letters) ? letters.slice(0, 5) : `X${letters.slice(0, 4)}`;
+  return `${stem}USD`.slice(0, 8);
 }

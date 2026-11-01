@@ -95,3 +95,22 @@ describe("voiceLength", () => {
     expect(voiceLength("USDC+ pays 1.7% right now. It is variable.")).toBe("USDC+ pays 1.7% right now. It is variable.");
   });
 });
+
+import { buildWorkflow, tickerFromName } from "@/lib/companion/workflows";
+
+describe("whitelabel workflow suggestions", () => {
+  const offers = (wf: ReturnType<typeof buildWorkflow>) =>
+    Object.fromEntries(wf.steps.flatMap((s) => (s.type === "request_input" && s.suggestedValue ? [[s.target, s.suggestedValue]] : [])));
+
+  it("always offers a name and ticker, even when the LLM gave none", () => {
+    expect(offers(buildWorkflow("create_whitelabel"))).toMatchObject({ "wl-name": "Acme Dollar", "wl-symbol": "ACMEUSD" });
+  });
+  it("derives the ticker from a given name and rejects invalid suggestions", () => {
+    expect(offers(buildWorkflow("create_whitelabel", { tokenName: "Naveen Savings" }))).toMatchObject({ "wl-name": "Naveen Savings", "wl-symbol": "NAVEEUSD" });
+    expect(offers(buildWorkflow("create_whitelabel", { tokenName: "x", tokenSymbol: "bad symbol!" }))).toMatchObject({ "wl-name": "Acme Dollar", "wl-symbol": "ACMEUSD" });
+  });
+  it("builds valid tickers from awkward names", () => {
+    expect(tickerFromName("42 Club")).toBe("X42USD");
+    expect(tickerFromName("Ab")).toBe("ABUSD");
+  });
+});

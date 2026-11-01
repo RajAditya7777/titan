@@ -5,7 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { auditWorkflow, renderTemplate, type CompanionReply, type Step, type Workflow } from "@/lib/companion/actions";
 import { parseControlCommand, type ControlCommand } from "@/lib/companion/commands";
 import { ELEMENTS, PAGES, getElement, pageForPath, validate, type ElementId, type PageId } from "@/lib/companion/registry";
-import { BrowserSpeechToText, BrowserTextToSpeech, isLikelyEcho } from "@/lib/companion/voice";
+import { BrowserSpeechToText, BrowserTextToSpeech, isLikelyEcho, type SpeechToText, type TextToSpeech } from "@/lib/companion/voice";
+import { createVoiceEngines } from "@/lib/companion/voice-server";
+import { setMicLevel } from "@/lib/companion/mic-level";
 
 // ───────────────────────────── Types ─────────────────────────────
 
@@ -53,7 +55,16 @@ interface CompanionApi {
   panelOpen: boolean;
   setPanelOpen(open: boolean): void;
   engine: "llm" | "rules" | "unknown";
-  voice: { sttSupported: boolean; listening: boolean; interim: string; handsFree: boolean; muted: boolean; micError: string | null };
+  voice: {
+    sttSupported: boolean;
+    listening: boolean;
+    interim: string;
+    handsFree: boolean;
+    muted: boolean;
+    micError: string | null;
+    /** Which engines are active: server (Whisper / neural TTS) or the browser's Web Speech. */
+    engines: { stt: "server" | "browser"; tts: "server" | "browser" };
+  };
   toggleMic(): void;
   setMuted(m: boolean): void;
   send(text: string): Promise<void>;
@@ -130,6 +141,7 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
   const [muted, setMutedState] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [sttSupported, setSttSupported] = useState(false);
+  const [engines, setEngines] = useState<{ stt: "server" | "browser"; tts: "server" | "browser" }>({ stt: "browser", tts: "browser" });
 
   // Refs mirror state for use inside async step code without stale closures.
   const runRef = useRef<RunState | null>(null);
@@ -140,8 +152,8 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
   const fields = useRef(new Map<ElementId, FieldHandle>());
   const fieldTimers = useRef(new Map<ElementId, ReturnType<typeof setTimeout>>());
   const lastToolResult = useRef<unknown>(null);
-  const tts = useRef<BrowserTextToSpeech | null>(null);
-  const stt = useRef<BrowserSpeechToText | null>(null);
+  const tts = useRef<(TextToSpeech & { muted: boolean }) | null>(null);
+  const stt = useRef<(SpeechToText & { onLevel?: (level: number) => void }) | null>(null);
   const msgId = useRef(0);
   const handleUtteranceRef = useRef<(t: string) => void>(() => {});
 
@@ -193,9 +205,15 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
       if (spec.page !== "global" && spec.page !== pageRef.current) await navigate(spec.page as PageId);
       const node = await waitForElement(id);
       if (!node) return false;
+      // Keep the target inside the area nothing covers: below the sticky header, and above the
+      // guidance bar while a walkthrough runs (it's ~160px tall). scrollIntoView("center") ignores
+      // overlays, so centre it in the free band ourselves.
       const r = node.getBoundingClientRect();
-      if (r.top < 80 || r.bottom > window.innerHeight - 80) {
-        node.scrollIntoView({ behavior: "smooth", block: "center" });
+      const topReserve = 120;
+      const bottomReserve = runRef.current ? 200 : 80;
+      if (r.top < topReserve || r.bottom > window.innerHeight - bottomReserve) {
+        const bandCentre = topReserve + (window.innerHeight - topReserve - bottomReserve) / 2;
+        window.scrollBy({ top: r.top + Math.min(r.height, 240) / 2 - bandCentre, behavior: "smooth" });
         await sleep(450);
       }
       setPetState("moving");
@@ -617,9 +635,13 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
 
   // ── Voice wiring ──
   useEffect(() => {
+    let disposed = false;
+    // Start on the browser engines so voice works instantly; upgrade to server engines below.
     tts.current = new BrowserTextToSpeech();
-    const rec = new BrowserSpeechToText({ continuous: true });
+    const wire = (rec: SpeechToText & { onLevel?: (level: number) => void }) => {
+    rec.onLevel = setMicLevel;
     rec.onStateChange = (on) => {
+      if (!on) setMicLevel(0);
       setListening(on);
       if (on) setMicError(null);
     };
@@ -645,9 +667,27 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
     };
     stt.current = rec;
     setSttSupported(rec.supported);
+    };
+    wire(new BrowserSpeechToText({ continuous: true }));
+
+    void createVoiceEngines().then((v) => {
+      if (disposed) return;
+      // Swap only engines that differ, and never mid-utterance.
+      if (v.kind.tts === "server" && !speakingTextRef.current) {
+        v.tts.muted = tts.current?.muted ?? false;
+        tts.current = v.tts;
+      }
+      // The mic is always off at load (it needs a user click), so swapping STT here is safe.
+      if (v.kind.stt === "server") {
+        stt.current?.stop();
+        wire(v.stt);
+      }
+      setEngines(v.kind);
+    });
     fetch("/api/companion").then((r) => r.json()).then((d) => setEngine(d.engine)).catch(() => {});
     return () => {
-      rec.stop();
+      disposed = true;
+      stt.current?.stop();
       tts.current?.cancel();
     };
   }, []);
@@ -704,7 +744,7 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
       panelOpen,
       setPanelOpen,
       engine,
-      voice: { sttSupported, listening, interim, handsFree, muted, micError },
+      voice: { sttSupported, listening, interim, handsFree, muted, micError, engines },
       toggleMic,
       setMuted,
       send,
@@ -713,7 +753,7 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
       registerField,
       notifyFieldChange,
     }),
-    [page, petState, target, bubble, messages, run, panelOpen, engine, sttSupported, listening, interim, handsFree, muted, micError, toggleMic, setMuted, send, handleUtterance, navigate, highlight, explain, fill, confirmOffer, completeStep, back, repeat, restart, cancel, retry, registerField, notifyFieldChange],
+    [page, petState, target, bubble, messages, run, panelOpen, engine, sttSupported, listening, interim, handsFree, muted, micError, engines, toggleMic, setMuted, send, handleUtterance, navigate, highlight, explain, fill, confirmOffer, completeStep, back, repeat, restart, cancel, retry, registerField, notifyFieldChange],
   );
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

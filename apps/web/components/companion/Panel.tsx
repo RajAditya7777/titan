@@ -66,7 +66,7 @@ function FullPanel() {
     <motion.section
       aria-label="Reflect Companion"
       data-testid="companion-panel"
-      className="fixed bottom-[124px] right-6 z-[55] flex max-h-[min(640px,calc(100vh-150px))] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#15191f]/95 shadow-[0_30px_80px_-20px_rgba(0,88,178,0.55)] backdrop-blur-xl"
+      className="fixed bottom-[124px] right-6 z-[55] flex max-h-[min(640px,calc(100vh-150px))] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[var(--c-surface)]/95 shadow-[0_30px_80px_-20px_rgba(0,88,178,0.55)] backdrop-blur-xl"
       initial={{ opacity: 0, y: 24, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 24, scale: 0.96 }}
@@ -75,20 +75,20 @@ function FullPanel() {
       <header className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-4">
         <div className="flex-1">
           <p className="text-sm font-semibold text-white">Reflect Companion</p>
-          <p className="text-xs text-[var(--muted)]">
+          <p className="text-xs text-[var(--c-muted)]">
             You&apos;re on <span className="text-white/80">{PAGES[c.page].title}</span>
           </p>
         </div>
         <span
           title={c.engine === "llm" ? "Answers come from the configured LLM" : "No LLM configured: deterministic intent rules"}
-          className="flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--muted)]"
+          className="flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--c-muted)]"
         >
           <Cpu size={11} /> {c.engine === "llm" ? "LLM" : c.engine === "rules" ? "Offline rules" : "…"}
         </span>
-        <button type="button" onClick={() => c.setMuted(!c.voice.muted)} className="rounded-full p-1.5 text-[var(--muted)] hover:bg-white/5 hover:text-white" aria-label={c.voice.muted ? "Unmute voice" : "Mute voice"}>
+        <button type="button" onClick={() => c.setMuted(!c.voice.muted)} className="rounded-full p-1.5 text-[var(--c-muted)] hover:bg-white/5 hover:text-white" aria-label={c.voice.muted ? "Unmute voice" : "Mute voice"}>
           {c.voice.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
-        <button type="button" onClick={() => c.setPanelOpen(false)} className="rounded-full p-1.5 text-[var(--muted)] hover:bg-white/5 hover:text-white" aria-label="Close">
+        <button type="button" onClick={() => c.setPanelOpen(false)} className="rounded-full p-1.5 text-[var(--c-muted)] hover:bg-white/5 hover:text-white" aria-label="Close">
           <X size={16} />
         </button>
       </header>
@@ -115,7 +115,7 @@ function FullPanel() {
         )}
         {c.messages.map((m) =>
           m.role === "system" ? (
-            <p key={m.id} className="text-center font-mono text-[10.5px] text-[var(--muted)]">
+            <p key={m.id} className="text-center font-mono text-[10.5px] text-[var(--c-muted)]">
               ⚙ {m.text}
             </p>
           ) : (
@@ -169,7 +169,7 @@ function FullPanel() {
           placeholder={c.voice.sttSupported ? "Or type a message…" : "Type a message…"}
           aria-label="Message the companion"
           data-testid="companion-input"
-          className="h-10 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+          className="h-10 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-4 text-sm text-white placeholder:text-[var(--c-muted)] focus:border-[var(--accent)] focus:outline-none"
         />
         <button type="submit" disabled={!draft.trim()} className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition enabled:hover:bg-white/20 disabled:opacity-40" aria-label="Send">
           <Send size={16} />
@@ -190,7 +190,7 @@ function GuidanceBar() {
   return (
     <motion.div
       data-testid="guidance-bar"
-      className="fixed bottom-5 left-1/2 z-[58] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 rounded-2xl border border-white/10 bg-[#15191f]/95 p-3 shadow-[0_20px_60px_-15px_rgba(0,88,178,0.6)] backdrop-blur-xl"
+      className="fixed bottom-5 left-1/2 z-[58] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 rounded-2xl border border-white/10 bg-[var(--c-surface)]/95 p-3 shadow-[0_20px_60px_-15px_rgba(0,88,178,0.6)] backdrop-blur-xl"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 30 }}
@@ -198,7 +198,7 @@ function GuidanceBar() {
       <div className="flex items-center gap-3">
         <MicButton />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between text-[11px] text-[var(--muted)]">
+          <div className="flex items-center justify-between text-[11px] text-[var(--c-muted)]">
             <span className="flex items-center gap-1 truncate font-medium text-white/90">
               <Wand2 size={12} className="text-[var(--accent-2)]" /> {run.workflow.title}
             </span>
@@ -268,7 +268,7 @@ function GuidanceBar() {
           data-testid="guidance-input"
           aria-label="Type to the companion"
           placeholder="Say or type “next”, “repeat”, “go back”, “explain this”, “stop”…"
-          className="h-8 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs text-white placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+          className="h-8 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs text-white placeholder:text-[var(--c-muted)] focus:border-[var(--accent)] focus:outline-none"
         />
       </form>
     </motion.div>

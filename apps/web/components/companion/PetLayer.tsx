@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { homePosition, placePet, type Placement, type Rect } from "@/lib/companion/positioning";
 import { Pet, REACTIONS, type Reaction } from "./Pet";
+import { useMicLevel } from "@/lib/companion/mic-level";
 import { useCompanion } from "./CompanionProvider";
 
 const PET = { width: 88, height: 88 };
@@ -19,6 +20,7 @@ export function PetLayer() {
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
   const [hover, setHover] = useState(false);
   const raf = useRef<number | null>(null);
+  const micLevel = useMicLevel();
   const [reaction, setReaction] = useState<Reaction | null>(null);
   const lastReaction = useRef<Reaction | null>(null);
   const [gaze, setGaze] = useState<number | null>(null);
@@ -159,13 +161,14 @@ export function PetLayer() {
             }}
             exit={{ opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 30 }}
-            style={{ boxShadow: "0 0 0 9999px rgba(6, 5, 20, 0.55)" }}
+            // A light dim: on the light UI a heavy overlay reads as "muddy", not "focused".
+            style={{ boxShadow: "0 0 0 9999px rgba(17, 21, 25, 0.32)" }}
           >
             <motion.div
               className="absolute inset-0 rounded-2xl border-2 border-[var(--accent-2)]"
               animate={{ opacity: [0.9, 0.35, 0.9], scale: [1, 1.025, 1] }}
               transition={{ duration: 1.8, repeat: Infinity }}
-              style={{ boxShadow: "0 0 24px 2px rgba(125, 211, 252, 0.45)" }}
+              style={{ boxShadow: "0 0 0 4px rgba(59, 139, 234, 0.18), 0 0 28px 4px rgba(59, 139, 234, 0.35)" }}
             />
           </motion.div>
         )}
@@ -177,7 +180,7 @@ export function PetLayer() {
           <motion.div
             key="bubble"
             role="status"
-            className="absolute rounded-2xl border border-white/10 bg-[#1b2027]/95 px-4 py-3 text-[13.5px] leading-relaxed text-white shadow-2xl backdrop-blur-md"
+            className="absolute rounded-2xl border border-white/10 bg-[var(--c-surface)]/95 px-4 py-3 text-[13.5px] leading-relaxed text-white shadow-[0_18px_50px_-12px_rgba(17,21,25,0.55)] backdrop-blur-md"
             style={{ width: bubbleWidth }}
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{
@@ -190,7 +193,11 @@ export function PetLayer() {
             exit={{ opacity: 0, scale: 0.92 }}
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
           >
-            {bubble}
+            <BubbleText text={bubble} />
+            <BubbleTail
+              side={beside ? (bubbleX > pos.x ? "left" : "right") : bubbleAbove ? "bottom" : "top"}
+              offset={beside ? undefined : Math.max(18, Math.min(bubbleWidth - 18, pos.x + PET.width / 2 - bubbleX))}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -233,6 +240,7 @@ export function PetLayer() {
           gazeAngle={petState === "idle" ? gaze : null}
           reaction={reaction}
           sleeping={sleeping}
+          voiceLevel={voice.listening ? micLevel : 0}
           size={PET.width}
         />
         {/* attention dot when idle & closed: there is help available */}
@@ -247,4 +255,43 @@ export function PetLayer() {
       </motion.button>
     </div>
   );
+}
+
+/**
+ * Words fade in at roughly speaking pace, so the caption moves with the voice. The full text is in
+ * the DOM from the first frame (screen readers and tests see the whole sentence); only opacity
+ * animates. Long lines are compressed so the reveal never lags far behind the audio.
+ */
+function BubbleText({ text }: { text: string }) {
+  const words = text.split(/(\s+)/);
+  const wordCount = words.filter((w) => w.trim()).length;
+  const step = Math.min(0.2, 3 / Math.max(1, wordCount));
+  let i = 0;
+  return (
+    <span key={text}>
+      {words.map((w, k) =>
+        w.trim() ? (
+          <motion.span key={k} initial={{ opacity: 0.12 }} animate={{ opacity: 1 }} transition={{ duration: 0.25, delay: i++ * step }}>
+            {w}
+          </motion.span>
+        ) : (
+          w
+        ),
+      )}
+    </span>
+  );
+}
+
+/** Small tail pointing from the bubble toward the pet. */
+function BubbleTail({ side, offset }: { side: "top" | "bottom" | "left" | "right"; offset?: number }) {
+  const base = "absolute h-3 w-3 rotate-45 border-white/10 bg-[var(--c-surface)]";
+  const pos =
+    side === "bottom"
+      ? { bottom: -6, left: (offset ?? 24) - 6, borderRight: "1px solid", borderBottom: "1px solid" }
+      : side === "top"
+        ? { top: -6, left: (offset ?? 24) - 6, borderLeft: "1px solid", borderTop: "1px solid" }
+        : side === "left"
+          ? { left: -6, top: "calc(50% - 6px)", borderLeft: "1px solid", borderBottom: "1px solid" }
+          : { right: -6, top: "calc(50% - 6px)", borderRight: "1px solid", borderTop: "1px solid" };
+  return <span aria-hidden className={base} style={{ ...pos, borderColor: "rgba(255,255,255,0.1)" }} />;
 }

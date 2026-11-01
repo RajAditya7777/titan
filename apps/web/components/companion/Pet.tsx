@@ -17,6 +17,8 @@ interface Props {
   /** A one-off hover reaction; a different one is picked each hover so it feels alive. */
   reaction?: Reaction | null;
   sleeping?: boolean;
+  /** 0..1 live microphone level: the pet visibly "hears" you. */
+  voiceLevel?: number;
   size?: number;
 }
 
@@ -48,7 +50,7 @@ const BODY_BOB: Partial<Record<Props["state"], TargetAndTransition>> = {
   error: { rotate: -12, x: [0, -3, 3, -2, 0], transition: { duration: 0.5 } },
 };
 
-export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleeping = false, size = 88 }: Props) {
+export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleeping = false, voiceLevel = 0, size = 88 }: Props) {
   const reduce = useReducedMotion();
   const look = lookAngle ?? (sleeping ? null : gazeAngle);
   const rad = look == null ? null : (look * Math.PI) / 180;
@@ -97,6 +99,19 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
         transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
       />
 
+      {/* live voice ring: follows the mic level with a spring, so speaking visibly reaches the pet */}
+      <motion.circle
+        cx="60"
+        cy="58"
+        r="42"
+        fill="rgba(59,139,234,0.10)"
+        stroke="#3B8BEA"
+        strokeWidth="2.5"
+        animate={{ scale: 1 + voiceLevel * 0.45, opacity: voiceLevel > 0.05 ? 0.25 + voiceLevel * 0.75 : 0 }}
+        transition={{ type: "spring", stiffness: 380, damping: 22 }}
+        style={{ transformOrigin: "60px 58px" }}
+      />
+
       {/* listening rings */}
       <AnimatePresence>
         {state === "listening" &&
@@ -107,7 +122,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
               cy="58"
               r="40"
               fill="none"
-              stroke="#7DD3FC"
+              stroke="#3B8BEA"
               strokeWidth="2"
               initial={{ scale: 0.9, opacity: 0.7 }}
               animate={{ scale: 1.5, opacity: 0 }}
