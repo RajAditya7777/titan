@@ -16,12 +16,15 @@
   --good: #0f8a5f;
   --bad: #c2334d;
   /* Pet: a husky-style pup in Reflect's blues (navy coat, ice-white face, bright blue eyes). */
-  --pet-outline: #0f2236;
-  --pet-dark: #1f4f86;
-  --pet-mid: #6f9fd8;
-  --pet-light: #f3f7fc;
-  --pet-pink: #f4a6b7;
-  --pet-iris: #3b8bea;
+  /* Pet: Titan gold on charcoal, Titan green eyes */
+  --pet-outline: #151513;
+  --pet-dark: #c8962a;
+  --pet-mid: #f2d363;
+  --pet-light: #fff4d6;
+  --pet-sock: #2b2927;
+  --pet-pink: #f59e8b;
+  --pet-iris: #00d692;
+  --pet-accent: #e6b93a;
 }
 
 @theme inline {

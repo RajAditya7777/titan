@@ -1,11 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion, AnimatePresence, useReducedMotion, type TargetAndTransition } from "motion/react";
 import type { PetState } from "./CompanionProvider";
 import { cells, LEG_TOP, LEGS, SPRITE, TAIL, TAIL_COL, TAIL_ROW, U } from "./pet-sprite";
 
 /**
- * The Reflect guide: a small husky-style pixel pup in Reflect's blues, drawn on a 20x20 grid of 6px
+ * Milo, the Titan guide: a small pixel fox in Titan's gold and charcoal, drawn on a 20x20 grid of 6px
  * cells. Pure SVG + motion, no image assets, so it scales crisply, themes with CSS (--pet-*) and
  * costs nothing to ship. Every visual is a function of (state, lookAngle, voiceLevel).
  *
@@ -27,7 +28,7 @@ interface Props {
   size?: number;
 }
 
-export const REACTIONS = ["wave", "spin", "wiggle", "giggle", "hop", "hearts"] as const;
+export const REACTIONS = ["wave", "spin", "wiggle", "giggle", "hop", "hearts", "hi", "roll"] as const;
 export type Reaction = (typeof REACTIONS)[number];
 
 /** Eyes: 2x2 cells each at these columns, row 6. */
@@ -57,20 +58,41 @@ const REACTION_ANIM: Record<Reaction, TargetAndTransition> = {
   giggle: { y: [0, -3, 0, -3, 0, -3, 0], transition: { duration: 0.9 } },
   hop: { y: [0, 4, -24, 0, -6, 0], scaleY: [1, 0.85, 1.1, 0.9, 1.03, 1], transition: { duration: 1 } },
   hearts: { scale: [1, 1.08, 1], y: -4, transition: { duration: 0.6 } },
+  hi: {
+    rotate: [0, -14, 10, -12, 8, -6, 0],
+    y: [0, -8, -4, -6, -2, 0],
+    transition: { duration: 1.2, ease: "easeInOut" },
+  },
+  roll: {
+    // A full barrel roll around the body's centre (see ROLL_ORIGIN), with a hop so it clears the floor.
+    rotate: [0, 0, 180, 360, 360],
+    y: [0, 3, -16, 0, 0],
+    scaleY: [1, 0.86, 1, 1.06, 1],
+    transition: { duration: 1.4, times: [0, 0.15, 0.5, 0.85, 1], ease: "easeInOut" },
+  },
 };
+
+/**
+ * Every body target is laid over this resting pose. Motion only animates the values a target names,
+ * so without it a value set by one state (e.g. the walking lean) would stay stuck after the next.
+ */
+const REST = { x: 0, y: 0, rotate: 0, scale: 1, scaleX: 1, scaleY: 1 };
+const ROLL_ORIGIN = "60px 72px";
 
 const SLEEP_ANIM: TargetAndTransition = { scaleY: [1, 0.95, 1], transition: { duration: 3.6, repeat: Infinity, ease: "easeInOut" } };
 
 const BODY_BOB: Partial<Record<Props["state"], TargetAndTransition>> = {
-  idle: { y: [0, -2, 0], transition: { duration: 3.2, repeat: Infinity, ease: "easeInOut" } },
+  // Breathing: a slight stretch up from the feet (squash and stretch), not just a bob.
+  idle: { y: [0, -1, 0], scaleY: [1, 1.03, 1], scaleX: [1, 0.99, 1], transition: { duration: 3.2, repeat: Infinity, ease: "easeInOut" } },
   hover: { y: -6, transition: { type: "spring", stiffness: 300, damping: 14 } },
   listening: { y: [0, -2, 0], transition: { duration: 1.4, repeat: Infinity } },
   thinking: { y: [0, -1, 0], transition: { duration: 2.2, repeat: Infinity, ease: "easeInOut" } },
   speaking: { y: [0, -2, 0], transition: { duration: 0.5, repeat: Infinity } },
-  moving: { rotate: 5 },
+  // A lean plus a bounce in step with the legs (LEG_STEP), so the walk reads as a trot.
+  moving: { rotate: 4, y: [0, -3, 0], transition: { duration: 0.32, repeat: Infinity } },
   pointing: { y: [0, -2, 0], transition: { duration: 2, repeat: Infinity, ease: "easeInOut" } },
   waiting: { y: [0, -2, 0], transition: { duration: 2.6, repeat: Infinity, ease: "easeInOut" } },
-  celebrating: { y: [0, -18, 0, -10, 0], transition: { duration: 0.9, repeat: 1 } },
+  celebrating: { y: [0, -18, 0, -10, 0], scaleY: [1, 1.08, 0.88, 1.04, 1], transition: { duration: 0.9, repeat: 1 } },
   error: { rotate: -6, x: [0, -3, 3, -2, 0], transition: { duration: 0.5 } },
 };
 
@@ -103,6 +125,16 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
   const asleep = sleeping && state === "idle" && !reaction;
   const happy = reaction === "giggle" || reaction === "hearts" || reaction === "wave";
   const eyeMood = asleep ? "sleep" : happy ? "hover" : state;
+  const rolling = reaction === "roll" && !reduce;
+  const body = useMemo<TargetAndTransition>(
+    () => (reduce ? REST : { ...REST, ...(reaction ? REACTION_ANIM[reaction] : asleep ? SLEEP_ANIM : (BODY_BOB[state] ?? {})) }),
+    [reduce, reaction, asleep, state],
+  );
+  // While pointing, the head tilts a little toward the target, so the look and the arrow agree.
+  const headTilt: TargetAndTransition =
+    pointing && rad != null
+      ? { rotate: Math.round(Math.cos(rad) * 8), transition: { type: "spring", stiffness: 160, damping: 14 } }
+      : (HEAD_TILT[state] ?? { rotate: 0 });
 
   return (
     <motion.svg
@@ -110,7 +142,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
       height={size}
       viewBox="0 0 120 120"
       role="img"
-      aria-label={`Reflect guide, ${state}`}
+      aria-label={`Milo, Titan guide, ${state}`}
       shapeRendering="crispEdges"
       style={{ overflow: "visible" }}
     >
@@ -133,7 +165,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
         cy={CENTER.y}
         r={62}
         fill="none"
-        stroke="var(--accent-2)"
+        stroke="var(--pet-accent)"
         strokeWidth="2.5"
         initial={{ opacity: 0 }}
         animate={{ scale: 1 + voiceLevel * 0.25, opacity: voiceLevel > 0.05 ? 0.25 + voiceLevel * 0.75 : 0 }}
@@ -151,7 +183,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
               cy={CENTER.y}
               r={56}
               fill="none"
-              stroke="var(--accent-2)"
+              stroke="var(--pet-accent)"
               strokeWidth="2"
               initial={{ scale: 0.9, opacity: 0.7 }}
               animate={{ scale: 1.35, opacity: 0 }}
@@ -175,7 +207,9 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
           >
             <motion.path
               d="M122 50h4v4h4v4h4v4h-4v4h-4v4h-4z"
-              fill="var(--accent)"
+              fill="var(--pet-accent)"
+              stroke="var(--pet-outline)"
+              strokeWidth={1.5}
               animate={reduce ? {} : { x: [0, 4, 0] }}
               transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
             />
@@ -183,10 +217,12 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
         )}
       </AnimatePresence>
 
+      {/* No per-state key: remounting reset the pose instantly (a visible snap); REST lets values glide.
+          The roll alone remounts, so its 360° end becomes 0° without spinning back. */}
       <motion.g
-        key={reaction ?? (asleep ? "sleep" : state)}
-        animate={reduce ? {} : reaction ? REACTION_ANIM[reaction] : asleep ? SLEEP_ANIM : (BODY_BOB[state] ?? {})}
-        style={{ transformOrigin: `60px ${FEET_Y}px` }}
+        key={rolling ? "roll" : "body"}
+        animate={body}
+        style={{ transformOrigin: rolling ? ROLL_ORIGIN : `60px ${FEET_Y}px` }}
       >
         {/* tail, behind the body */}
         <motion.g
@@ -196,12 +232,28 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
           <Cells rows={TAIL} col0={TAIL_COL} row0={TAIL_ROW} />
         </motion.g>
 
-        {/* legs; the front-right paw lifts while pointing */}
+        {/* legs; the front-right paw lifts while pointing or waving hi */}
         {LEGS.map(([col, rows], i) => (
           <motion.g
             key={col}
-            animate={state === "moving" && !reduce ? LEG_STEP : pointing && i === 2 ? { y: -U - 2 } : { y: 0 }}
-            transition={state === "moving" ? { delay: i % 2 ? 0.16 : 0 } : { type: "spring", stiffness: 260, damping: 16 }}
+            animate={
+              state === "moving" && !reduce
+                ? LEG_STEP
+                : (reaction === "hi" || reaction === "wave") && i === 2
+                  ? { y: [-U * 2, -U * 3, -U * 2], rotate: [-10, 25, -10] }
+                  : reaction === "roll"
+                    ? { y: [-U * 1.5, -U * 2.2, -U * 1.5] }
+                    : pointing && i === 2
+                      ? { y: -U - 2 }
+                      : { y: 0 }
+            }
+            transition={
+              state === "moving"
+                ? { delay: i % 2 ? 0.16 : 0 }
+                : (reaction === "hi" || reaction === "wave")
+                  ? { repeat: 2, duration: 0.35, ease: "easeInOut" }
+                  : { type: "spring", stiffness: 260, damping: 16 }
+            }
           >
             <Cells rows={rows} col0={col} row0={LEG_TOP} />
           </motion.g>
@@ -210,7 +262,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
         {/* body + head */}
         <Cells rows={SPRITE.slice(12)} row0={12} />
         <motion.g
-          animate={reduce ? {} : (HEAD_TILT[state] ?? { rotate: 0 })}
+          animate={reduce ? {} : headTilt}
           style={{ transformOrigin: `60px ${11 * U}px` }}
         >
           <Cells rows={SPRITE.slice(0, 12)} />
@@ -313,7 +365,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
             <motion.path
               key={i}
               d={`M${x - 2} ${y - 6}h4v4h4v4h-4v4h-4v-4h-4v-4h4z`}
-              fill={i % 2 ? "var(--accent-2)" : "var(--pet-pink)"}
+              fill={i % 2 ? "var(--pet-accent)" : "var(--pet-iris)"}
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: [0, 1.3, 1], opacity: [0, 1, 0] }}
               exit={{ opacity: 0 }}

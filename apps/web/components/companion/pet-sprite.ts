@@ -7,48 +7,48 @@
 export const U = 6;
 
 /**
- * Palette keys → CSS tokens. o outline, d dark coat, m mid shading, w light coat, p pink, n nose.
- * '.' is transparent. Every row is exactly 20 cells (a unit test checks this).
+ * Palette keys → CSS tokens. o outline, d deep gold, m Titan gold coat, w cream, k charcoal sock,
+ * n nose. '.' is transparent. Every row is exactly 20 cells (a unit test checks this).
  */
 export const PALETTE: Record<string, string> = {
   o: "var(--pet-outline)",
   d: "var(--pet-dark)",
   m: "var(--pet-mid)",
   w: "var(--pet-light)",
-  p: "var(--pet-pink)",
+  k: "var(--pet-sock)",
   n: "var(--pet-outline)",
 };
 
-/** Head (rows 0-11) and body (rows 12-16). Eyes, mouth, legs and tail are drawn on top. */
+/** A pixel fox. Head (rows 0-11) and body (rows 12-16); eyes, mouth, legs and tail are drawn on top. */
 export const SPRITE = [
-  "...oo..........oo...",
-  "..odpo........opdo..",
-  "..odppooooooooppdo..",
-  "..oddddddddddddddo..",
-  ".odddddddwwdddddddo.",
-  ".oddddddwwwwddddddo.",
-  ".odddwwwwwwwwwwdddo.",
-  ".odmwwwwwwwwwwwwmdo.",
-  ".owwwwwwwnnwwwwwwwo.",
+  ".oo..............oo.",
+  ".odo............odo.",
+  ".odwo..........owdo.",
+  ".odwdoooooooooodwdo.",
+  ".ommmmmmmmmmmmmmmmo.",
+  "ommmmmmmmmmmmmmmmmmo",
+  "ommmmmmmmmmmmmmmmmmo",
+  "ommmmmmmmmmmmmmmmmmo",
+  "owwwmmmmmnnmmmmmwwwo",
+  "owwwwwwwwwwwwwwwwwwo",
   ".owwwwwwwwwwwwwwwwo.",
-  "..owwwwwwwwwwwwwwo..",
-  "...oowwwwwwwwwwoo...",
-  "....odmwwwwwwmdo....",
-  "...oddmwwwwwwmddo...",
-  "...oddmwwwwwwmddo...",
-  "...oddddwwwwddddo...",
-  "...oooooooooooooo...",
+  "..oowwwwwwwwwwwwoo..",
+  "...ommwwwwwwwwmmo...",
+  "..ommmwwwwwwwwmmmo..",
+  "..ommmmwwwwwwmmmmo..",
+  "..odmmmmmmmmmmmmdo..",
+  "..oooooooooooooooo..",
 ];
-/** Legs: [column, sprite]. Back legs are dark and shorter (they sit further away). */
+/** Legs: [column, sprite]. Charcoal socks; back legs are shorter (they sit further away). */
 export const LEGS: Array<[number, string[]]> = [
-  [3, ["odo", "odo", "ooo"]],
-  [6, ["owwo", "owwo", "owwo", "oooo"]],
-  [10, ["owwo", "owwo", "owwo", "oooo"]],
-  [14, ["odo", "odo", "ooo"]],
+  [3, ["odo", "oko", "ooo"]],
+  [6, ["ommo", "okko", "okko", "oooo"]],
+  [10, ["ommo", "okko", "okko", "oooo"]],
+  [14, ["odo", "oko", "ooo"]],
 ];
 export const LEG_TOP = 16;
-/** Curled tail with a white tip at columns 16-20, rows 9-16; wags around its base. */
-export const TAIL = ["..oo.", ".owwo", ".odmo", "..odo", "..odo", ".oddo", "oddo.", "ooo.."];
+/** Bushy tail with a cream tip at columns 16-20, rows 9-16; wags around its base. */
+export const TAIL = ["..oo.", ".owwo", ".ommo", "ommmo", "ommmo", "ommo.", "omdo.", "ooo.."];
 export const TAIL_COL = 16;
 export const TAIL_ROW = 9;
 
