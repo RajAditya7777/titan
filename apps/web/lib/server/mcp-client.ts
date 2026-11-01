@@ -3,6 +3,7 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 
 /**
  * The web server is an MCP *client* of the Reflect MCP server. Two transports:
@@ -73,7 +74,7 @@ export async function callTool<T = Record<string, any>>(tool: string, args: Reco
   const started = Date.now();
   try {
     const { client } = await getMcp();
-    const res = (await client.callTool({ name: tool, arguments: args }, undefined, { timeout: 25_000 })) as {
+    const res = (await client.callTool({ name: tool, arguments: args }, undefined, { timeout: 20_000 })) as {
       isError?: boolean;
       structuredContent?: T;
       content?: { type: string; text?: string }[];
@@ -81,10 +82,18 @@ export async function callTool<T = Record<string, any>>(tool: string, args: Reco
     const data = (res.structuredContent ?? safeJson(res.content?.[0]?.text) ?? {}) as T;
     return { ok: !res.isError, data, ms: Date.now() - started, tool };
   } catch (err) {
-    g.__reflectMcp = undefined;
+    // A slow tool is not a dead server: keep the connection on timeouts. Only drop it (so the next
+    // call respawns the server) when the transport itself failed.
+    const timedOut = err instanceof McpError && err.code === ErrorCode.RequestTimeout;
+    if (!timedOut) g.__reflectMcp = undefined;
     return {
       ok: false,
-      data: { ok: false, error: { code: "MCP_UNAVAILABLE", message: "The Reflect MCP server is not reachable.", retryable: true } } as T,
+      data: {
+        ok: false,
+        error: timedOut
+          ? { code: "TIMEOUT", message: "Reflect is responding slowly right now", retryable: true }
+          : { code: "MCP_UNAVAILABLE", message: "The Reflect MCP server is not reachable", retryable: true },
+      } as T,
       ms: Date.now() - started,
       tool,
     };

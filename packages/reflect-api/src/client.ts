@@ -8,19 +8,29 @@ export type Logger = (entry: {
   status?: number;
   ms: number;
   attempt: number;
-  cached?: boolean;
+  cached?: boolean | "stale";
   error?: string;
 }) => void;
 
 export interface ReflectClientOptions {
   baseUrl?: string;
-  /** Per-attempt timeout for reads. Docs recommend 5s; the API often takes 1–3s, so we allow 8s. */
+  /**
+   * Per-attempt timeout for reads. Docs recommend 5s; the API often takes 1–3s, so we allow 6s.
+   * Worst case for a read = timeout × (maxRetries + 1) + backoff, which must stay below the
+   * caller's own timeout (the MCP call allows 20s).
+   */
   readTimeoutMs?: number;
   /** Timeout for transaction-building calls. Docs recommend 30s. */
   writeTimeoutMs?: number;
   maxRetries?: number;
   /** How long successful GET responses are reused. 0 disables the cache. */
   cacheTtlMs?: number;
+  /**
+   * If a GET fails, serve the last good response if it is younger than this ("stale-if-error").
+   * Display data such as APY moves slowly, so slightly old beats an error. Never applies to POSTs
+   * (quotes, transactions). 0 disables.
+   */
+  staleIfErrorMs?: number;
   /** Client-side request budget per second, to stay friendly to the public API. */
   maxRequestsPerSecond?: number;
   fetch?: typeof fetch;
@@ -57,10 +67,11 @@ export class ReflectClient {
   constructor(options: ReflectClientOptions = {}) {
     this.o = {
       baseUrl: (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, ""),
-      readTimeoutMs: options.readTimeoutMs ?? 8_000,
+      readTimeoutMs: options.readTimeoutMs ?? 6_000,
       writeTimeoutMs: options.writeTimeoutMs ?? 30_000,
-      maxRetries: options.maxRetries ?? 2,
+      maxRetries: options.maxRetries ?? 1,
       cacheTtlMs: options.cacheTtlMs ?? 15_000,
+      staleIfErrorMs: options.staleIfErrorMs ?? 10 * 60_000,
       maxRequestsPerSecond: options.maxRequestsPerSecond ?? 10,
       fetch: options.fetch ?? globalThis.fetch.bind(globalThis),
       sleep: options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))),
@@ -207,10 +218,20 @@ export class ReflectClient {
       if (pending) return pending as Promise<z.output<T>>;
     }
 
-    const run = this.withRetries(spec, envelope).then((value) => {
-      if (cacheable) this.cache.set(key, { at: this.o.now(), value });
-      return value;
-    });
+    const run = this.withRetries(spec, envelope).then(
+      (value) => {
+        if (cacheable) this.cache.set(key, { at: this.o.now(), value });
+        return value;
+      },
+      (err: unknown) => {
+        const stale = cacheable ? this.cache.get(key) : undefined;
+        if (stale && this.o.now() - stale.at < this.o.staleIfErrorMs) {
+          this.o.logger?.({ method: spec.method, path: spec.path, ms: 0, attempt: 0, cached: "stale" });
+          return stale.value as z.output<T>;
+        }
+        throw err;
+      },
+    );
     if (cacheable) {
       this.inflight.set(key, run);
       run.finally(() => this.inflight.delete(key)).catch(() => {});

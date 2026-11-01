@@ -49,7 +49,7 @@ describe("ReflectClient", () => {
 
   it("treats 429 as retryable RATE_LIMITED and gives up after maxRetries", async () => {
     const fetch = vi.fn(async () => jsonResponse({ error: "slow down", statusCode: 429 }, 429));
-    const { client } = makeClient(fetch, { maxRetries: 2 });
+    const { client } = makeClient(fetch, { maxRetries: 2, staleIfErrorMs: 0 });
     await expect(client.getProtocolStats()).rejects.toMatchObject({ code: "RATE_LIMITED" });
     expect(fetch).toHaveBeenCalledTimes(3);
   });
@@ -92,6 +92,21 @@ describe("ReflectClient", () => {
     await Promise.all([client.getExchangeRates(), client.getExchangeRates()]);
     await client.getExchangeRates();
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves the last good GET when upstream fails (stale-if-error), but never for POSTs", async () => {
+    let now = 0;
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ success: true, data: [{ index: 0, name: "USDC+" }] }))
+      .mockResolvedValue(jsonResponse({ error: "down", statusCode: 503 }, 503));
+    const client = new ReflectClient({ fetch: fetch as typeof fetch, sleep: async () => {}, now: () => now, cacheTtlMs: 1_000 });
+    await client.getStablecoinTypes();
+    now = 60_000; // cache expired, upstream now failing
+    await expect(client.getStablecoinTypes()).resolves.toEqual([{ index: 0, name: "USDC+" }]);
+    now = 60 * 60_000; // too old to serve
+    await expect(client.getStablecoinTypes()).rejects.toMatchObject({ code: "UPSTREAM_ERROR" });
+    await expect(client.quote("mint", 0, 1)).rejects.toMatchObject({ code: "UPSTREAM_ERROR" });
   });
 
   it("logs without request bodies", async () => {

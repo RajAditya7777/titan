@@ -5,7 +5,7 @@ import { placePet } from "@/lib/companion/positioning";
 import { ELEMENTS, ELEMENT_IDS, PAGES, pageForPath, validate } from "@/lib/companion/registry";
 import { buildWorkflow, WORKFLOW_IDS } from "@/lib/companion/workflows";
 import { planWithRules } from "@/lib/server/llm/rules";
-import { finalize } from "@/lib/server/llm/orchestrator";
+import { dropNulls, finalize, llmFriendlySchema, speakable } from "@/lib/server/llm/orchestrator";
 
 vi.mock("@/lib/server/mcp-client", () => ({ callTool: vi.fn(), listTools: vi.fn() }));
 
@@ -201,5 +201,24 @@ describe("LLM output finalisation", () => {
 
   it("survives garbage from the model", () => {
     expect(finalize("not json", []).speech).toMatch(/say that again/);
+  });
+});
+
+describe("LLM adapters", () => {
+  it("makes only optional properties nullable and strips $schema", () => {
+    const out = llmFriendlySchema({
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+      properties: { amount: { type: "string" }, asset: { type: "string", enum: ["USDC+"] } },
+      required: ["amount"],
+    }) as any;
+    expect(out.$schema).toBeUndefined();
+    expect(out.properties.amount.type).toBe("string");
+    expect(out.properties.asset.type).toEqual(["string", "null"]);
+    expect(dropNulls({ asset: null, amount: "1" })).toEqual({ amount: "1" });
+  });
+
+  it("turns Markdown answers into speakable text", () => {
+    expect(speakable("**Current APY**: ≈ 1.7 % — see [docs](https://x.y)\n- variable")).toBe("Current APY: ≈ 1.7 % — see docs variable");
   });
 });

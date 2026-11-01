@@ -27,21 +27,56 @@ export interface ChatResult {
   toolCalls: ToolCall[];
 }
 
+export interface ChatOptions {
+  signal?: AbortSignal;
+  /** Force a specific function (used to make the model end its turn with `companion_respond`). */
+  forceTool?: string;
+}
+
+/** Thrown for provider HTTP errors; carries what the caller needs to decide on a retry. */
+export class LlmHttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly retryAfterMs: number | null,
+    detail: string,
+  ) {
+    super(`LLM provider returned HTTP ${status}${detail ? `: ${detail}` : ""}`);
+  }
+}
+
 export interface LlmProvider {
   readonly name: string;
-  chat(messages: ChatMessage[], tools: FunctionTool[], opts?: { signal?: AbortSignal }): Promise<ChatResult>;
+  chat(messages: ChatMessage[], tools: FunctionTool[], opts?: ChatOptions): Promise<ChatResult>;
 }
 
 export class OpenAICompatibleProvider implements LlmProvider {
   readonly name: string;
 
   constructor(
-    private readonly cfg: { baseUrl: string; apiKey: string; model: string; timeoutMs?: number; temperature?: number },
+    private readonly cfg: { baseUrl: string; apiKey: string; model: string; timeoutMs?: number; temperature?: number; reasoningEffort?: string },
   ) {
     this.name = `openai-compatible:${cfg.model}`;
   }
 
-  async chat(messages: ChatMessage[], tools: FunctionTool[], opts: { signal?: AbortSignal } = {}): Promise<ChatResult> {
+  async chat(messages: ChatMessage[], tools: FunctionTool[], opts: ChatOptions = {}): Promise<ChatResult> {
+    try {
+      return await this.once(messages, tools, opts);
+    } catch (err) {
+      // One retry on a short rate-limit window; longer waits would stall a voice conversation.
+      if (err instanceof LlmHttpError && err.status === 429 && err.retryAfterMs != null && err.retryAfterMs <= 4_000) {
+        await new Promise((r) => setTimeout(r, err.retryAfterMs! + 150));
+        return this.once(messages, tools, opts);
+      }
+      // Providers that validate tool calls server-side (e.g. Groq) reject the model's occasional
+      // malformed arguments with a 400. That is a sampling slip, not a bad request: retry once.
+      if (err instanceof LlmHttpError && err.status === 400 && /tool call|tool_use_failed|parse tool/i.test(err.message)) {
+        return this.once(messages, tools, opts);
+      }
+      throw err;
+    }
+  }
+
+  private async once(messages: ChatMessage[], tools: FunctionTool[], opts: ChatOptions): Promise<ChatResult> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.cfg.timeoutMs ?? 30_000);
     opts.signal?.addEventListener("abort", () => controller.abort());
@@ -54,14 +89,18 @@ export class OpenAICompatibleProvider implements LlmProvider {
           model: this.cfg.model,
           messages,
           tools: tools.length ? tools : undefined,
-          tool_choice: tools.length ? "auto" : undefined,
+          tool_choice: !tools.length ? undefined : opts.forceTool ? { type: "function", function: { name: opts.forceTool } } : "auto",
           temperature: this.cfg.temperature ?? 0.3,
+          // Reasoning models (e.g. gpt-oss) accept this; it trades depth for latency, which voice needs.
+          ...(this.cfg.reasoningEffort ? { reasoning_effort: this.cfg.reasoningEffort } : {}),
         }),
         signal: controller.signal,
       });
       if (!res.ok) {
-        // Body may echo our request; log status only.
-        throw new Error(`LLM provider returned HTTP ${res.status}`);
+        // Keep only the provider's short error message: it explains 400s and never includes our key.
+        const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        const retryAfter = Number(res.headers.get("retry-after"));
+        throw new LlmHttpError(res.status, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : null, (body?.error?.message ?? "").slice(0, 200));
       }
       const json = (await res.json()) as {
         choices?: { message?: { content?: string | null; tool_calls?: ToolCall[] } }[];
@@ -84,5 +123,6 @@ export function providerFromEnv(env = process.env): LlmProvider | null {
     apiKey,
     model,
     timeoutMs: Number(env.LLM_TIMEOUT_MS) || 30_000,
+    reasoningEffort: env.LLM_REASONING_EFFORT || undefined,
   });
 }
