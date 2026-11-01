@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  /* Visual language observed on reflect.money: ink + Reflect blue + pale-blue accent. */
+  --bg: #0e1115;
+  --surface: #15191f;
+  --surface-2: #1b2027;
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #f3f5f7;
+  --muted: #8c96a1;
+  --accent: #0058b2;
+  --accent-2: #b9d3f0;
+  /* Pet palette, aligned to the brand blue */
+  --pet-1: #d6e8ff;
+  --pet-2: #6aa8f0;
+  --pet-3: #1f6fd1;
+  --pet-4: #0a3d7a;
+  --pet-arm: #2f7fe0;
+  --pet-hand: #cfe3fb;
+  --good: #34d399;
+  --bad: #fb7185;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-num);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(1100px 520px at 50% -12%, rgba(185, 211, 240, 0.10), transparent 62%),
+    radial-gradient(900px 500px at 100% 110%, rgba(0, 88, 178, 0.10), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num {
+  font-family: var(--font-num), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  letter-spacing: -0.045em;
+  font-weight: 500;
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
