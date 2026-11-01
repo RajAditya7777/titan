@@ -117,7 +117,7 @@ export function WhitelabelWizard() {
 }
 
 const inputCls =
-  "h-12 w-full rounded-xl border border-[var(--line)] bg-white/[0.03] px-4 text-[15px] placeholder:text-white/25 focus:border-[var(--accent)] focus:outline-none";
+  "h-12 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 text-[15px] placeholder:text-[var(--muted)]/60 focus:border-[var(--accent)] focus:outline-none";
 
 function Field(props: { id: ElementId; n: number; label: string; hint: string; value: string; error?: string | null; rule: ValidationRule; badge?: React.ReactNode; children: React.ReactNode }) {
   const ok = props.value && !validate(props.rule, props.value);

@@ -8,7 +8,7 @@ import { OFFICIAL } from "@/lib/site/content";
  * imports), so client components such as the header can use them too.
  */
 
-/** Same original mark as the app's wordmark, labelled for the site. */
+/** Same original mark as the app's wordmark. The "demo" tag keeps it from reading as Reflect's own site. */
 export function Wordmark({ light = false }: { light?: boolean }) {
   const ink = light ? "#ffffff" : "var(--ink)";
   return (
@@ -17,7 +17,8 @@ export function Wordmark({ light = false }: { light?: boolean }) {
         <rect x="3" y="3" width="7" height="18" rx="2" fill={ink} />
         <rect x="14" y="3" width="7" height="18" rx="2" fill="var(--accent-2)" />
       </svg>
-      companion
+      reflect
+      <span className="rounded-full border border-current px-1.5 py-px text-[10px] font-medium tracking-normal opacity-50">demo</span>
     </span>
   );
 }

@@ -15,17 +15,9 @@
   --accent-soft: #e6f0fa;
   --good: #0f8a5f;
   --bad: #c2334d;
-  /* Companion surfaces stay dark ink, so the guide reads as its own layer above the app. */
-  --c-surface: #111519;
-  --c-surface-2: #1b2027;
-  --c-muted: #9aa5b1;
-  /* Pet palette, aligned to the brand blue */
-  --pet-1: #d6e8ff;
-  --pet-2: #6aa8f0;
-  --pet-3: #1f6fd1;
-  --pet-4: #0a3d7a;
-  --pet-arm: #2f7fe0;
-  --pet-hand: #cfe3fb;
+  /* Pet: a flat warm terracotta body with near-black pixel eyes. */
+  --pet-body: #d97757;
+  --pet-eye: #1c1410;
 }
 
 @theme inline {

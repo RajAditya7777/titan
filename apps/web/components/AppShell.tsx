@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** Original wordmark (not Reflect's logo): a simple mirrored-bar mark + text. */
+/** Original wordmark (not Reflect's logo): mirrored-bar mark, the name, and a "demo" tag so it never reads as the real app. */
 function Wordmark() {
   return (
     <span className="flex items-center gap-2 text-[22px] font-semibold tracking-[-0.04em] text-[var(--ink)]">
@@ -81,7 +81,8 @@ function Wordmark() {
         <rect x="3" y="3" width="7" height="18" rx="2" fill="var(--ink)" />
         <rect x="14" y="3" width="7" height="18" rx="2" fill="var(--accent)" opacity="0.85" />
       </svg>
-      companion
+      reflect
+      <span className="rounded-full border border-current px-1.5 py-px text-[10px] font-medium tracking-normal opacity-50">demo</span>
     </span>
   );
 }

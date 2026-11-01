@@ -181,7 +181,7 @@ export function PetLayer() {
           <motion.div
             key="bubble"
             role="status"
-            className="absolute rounded-2xl border border-white/10 bg-[var(--c-surface)]/95 px-4 py-3 text-[13.5px] leading-relaxed text-white shadow-[0_18px_50px_-12px_rgba(17,21,25,0.55)] backdrop-blur-md"
+            className="absolute rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[13.5px] leading-relaxed text-[var(--text)] shadow-[0_18px_44px_-14px_rgba(17,21,25,0.3)]"
             style={{ width: bubbleWidth }}
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{
@@ -222,7 +222,7 @@ export function PetLayer() {
       <motion.button
         type="button"
         data-testid="companion-pet"
-        aria-label={panelOpen ? "Close Reflect Companion" : "Open Reflect Companion"}
+        aria-label={panelOpen ? "Close Reflect guide" : "Open Reflect guide"}
         className="pointer-events-auto absolute cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-2)]"
         style={{ width: PET.width, height: PET.height }}
         initial={false}
@@ -249,7 +249,7 @@ export function PetLayer() {
           <span className="absolute right-2 top-3 h-3 w-3 animate-ping rounded-full bg-[var(--accent-2)] opacity-60" />
         )}
         {voice.listening && (
-          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-sky-400 px-2 py-0.5 text-[10px] font-bold text-[#0e1115]">
+          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ink)] px-2 py-0.5 text-[10px] font-bold text-white">
             LISTENING
           </span>
         )}
@@ -285,14 +285,17 @@ function BubbleText({ text }: { text: string }) {
 
 /** Small tail pointing from the bubble toward the pet. */
 function BubbleTail({ side, offset }: { side: "top" | "bottom" | "left" | "right"; offset?: number }) {
-  const base = "absolute h-3 w-3 rotate-45 border-white/10 bg-[var(--c-surface)]";
+  const base = "absolute h-3 w-3 rotate-45 bg-[var(--surface)]";
+  // Colour lives inside each shorthand: mixing `borderRight` with a separate `borderColor` makes React
+  // warn (and mis-style) when the tail switches sides between renders.
+  const EDGE = "1px solid var(--line)";
   const pos =
     side === "bottom"
-      ? { bottom: -6, left: (offset ?? 24) - 6, borderRight: "1px solid", borderBottom: "1px solid" }
+      ? { bottom: -6, left: (offset ?? 24) - 6, borderRight: EDGE, borderBottom: EDGE }
       : side === "top"
-        ? { top: -6, left: (offset ?? 24) - 6, borderLeft: "1px solid", borderTop: "1px solid" }
+        ? { top: -6, left: (offset ?? 24) - 6, borderLeft: EDGE, borderTop: EDGE }
         : side === "left"
-          ? { left: -6, top: "calc(50% - 6px)", borderLeft: "1px solid", borderBottom: "1px solid" }
-          : { right: -6, top: "calc(50% - 6px)", borderRight: "1px solid", borderTop: "1px solid" };
-  return <span aria-hidden className={base} style={{ ...pos, borderColor: "rgba(255,255,255,0.1)" }} />;
+          ? { left: -6, top: "calc(50% - 6px)", borderLeft: EDGE, borderBottom: EDGE }
+          : { right: -6, top: "calc(50% - 6px)", borderRight: EDGE, borderTop: EDGE };
+  return <span aria-hidden className={base} style={pos} />;
 }

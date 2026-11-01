@@ -53,7 +53,7 @@ export default async function StablecoinPage({ params }: { params: Promise<{ sym
             <Layers size={17} className="text-[var(--accent-2)]" />
             <h2 className="font-semibold">How it works</h2>
           </div>
-          <ol className="space-y-3 text-sm text-white/80">
+          <ol className="space-y-3 text-sm text-[var(--text)]">
             {[
               `You deposit ${meta.underlying}; a non-custodial program holds it. No human has the keys.`,
               "The program lends it across Solana money markets (Drift, Kamino, Jupiter Lend) for the best rate.",

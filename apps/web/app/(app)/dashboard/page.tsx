@@ -3,15 +3,21 @@ import Link from "next/link";
 import { ArrowDownToLine, ArrowUpFromLine, ArrowUpRight, TrendingUp } from "lucide-react";
 import { Card, ErrorNote, Label, PageHeader, Skeleton, SourceBadge, ButtonLink, TokenIcon, usd, num, compact } from "@/components/ui/primitives";
 import { DEMO_HOLDINGS } from "@/lib/demo-data";
+import { NewUserHelp } from "@/components/pages/NewUserHelp";
 import { getEvents, getOverview } from "@/lib/server/data";
 
 export const dynamic = "force-dynamic";
 
 export default function DashboardPage() {
   const balance = DEMO_HOLDINGS.reduce((s, h) => s + h.amount, 0);
+  // No wallet can connect in this demo, so no visitor has deposited: everyone gets the new-user help.
+  // With real wallets this becomes "the connected wallet holds no Reflect stablecoins".
+  const hasDeposited = false;
   return (
     <>
       <PageHeader eyebrow="Dashboard" title="Your money, earning." subtitle="Hold dollars that grow on their own. Mint to start earning; redeem any time." />
+
+      <NewUserHelp hasDeposited={hasDeposited} />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card data-companion="dashboard-balance" className="md:col-span-2">
@@ -20,7 +26,7 @@ export default function DashboardPage() {
             <SourceBadge kind="demo" />
           </div>
           <p className="num mt-3 text-4xl font-semibold md:text-5xl">{usd(balance)}</p>
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-300">
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--good)]">
             <TrendingUp size={15} /> +{usd(30.51)} yield earned this month
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -72,9 +78,9 @@ export default function DashboardPage() {
 async function LiveApy() {
   const r = await getOverview();
   const usdc = r.data.stablecoins?.find((s) => s.symbol === "USDC+");
-  if (!r.ok || !usdc?.apy) return <p className="mt-4 text-sm text-rose-300">APY unavailable right now.</p>;
+  if (!r.ok || !usdc?.apy) return <p className="mt-4 text-sm text-[var(--bad)]">APY unavailable right now.</p>;
   return (
-    <p className="num mt-3 text-4xl font-semibold text-white">
+    <p className="num mt-3 text-4xl font-semibold text-[var(--text)]">
       {num(usdc.apy.percent)}
       <span className="text-2xl text-[var(--muted)]">%</span>
     </p>
@@ -94,7 +100,7 @@ async function StablecoinCards() {
               <p className="font-semibold">{s.symbol}</p>
               <p className="text-xs text-[var(--muted)]">Backed by {s.underlying ?? "n/a"}</p>
             </div>
-            <ArrowUpRight size={18} className="text-[var(--muted)] transition group-hover:text-white" />
+            <ArrowUpRight size={18} className="text-[var(--muted)] transition group-hover:text-[var(--text)]" />
           </div>
           <div className="mt-5 grid grid-cols-3 gap-3 text-sm">
             <Metric label="APY" value={s.apy ? `${num(s.apy.percent)}%` : "n/a"} accent />
@@ -115,7 +121,7 @@ async function Activity() {
     <div className="card divide-y divide-[var(--line)]">
       {r.data.events.map((e, i) => (
         <div key={i} className="flex items-center gap-4 px-5 py-3.5 text-sm">
-          <span className={`grid h-8 w-8 place-items-center rounded-full ${e.type === "Mint" ? "bg-emerald-400/10 text-emerald-300" : "bg-sky-400/10 text-sky-300"}`}>
+          <span className={`grid h-8 w-8 place-items-center rounded-full ${e.type === "Mint" ? "bg-emerald-50 text-emerald-700" : "bg-[var(--accent-soft)] text-[var(--accent)]"}`}>
             {e.type === "Mint" ? <ArrowDownToLine size={14} /> : <ArrowUpFromLine size={14} />}
           </span>
           <div className="flex-1">
@@ -126,7 +132,7 @@ async function Activity() {
           </div>
           <p className="num">{e.amount != null ? `${num(e.amount)}` : "n/a"}</p>
           {e.explorer && (
-            <a href={e.explorer} target="_blank" rel="noreferrer" className="text-xs text-[var(--muted)] hover:text-white">
+            <a href={e.explorer} target="_blank" rel="noreferrer" className="text-xs text-[var(--muted)] hover:text-[var(--text)]">
               Solscan ↗
             </a>
           )}
