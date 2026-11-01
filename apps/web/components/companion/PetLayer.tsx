@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { homePosition, placePet, type Placement, type Rect } from "@/lib/companion/positioning";
 import { Pet, REACTIONS, type Reaction } from "./Pet";
 import { useMicLevel } from "@/lib/companion/mic-level";
 import { useCompanion } from "./CompanionProvider";
+import { respondTo, type PageEvent } from "@/lib/companion/page-reactions";
 
 const PET = { width: 88, height: 88 };
 
@@ -26,6 +27,27 @@ export function PetLayer() {
   const [gaze, setGaze] = useState<number | null>(null);
   const [sleeping, setSleeping] = useState(false);
   const lastActivity = useRef(Date.now());
+  const reduceMotion = useReducedMotion();
+  /** A control the pet walks over to for a moment after the user touches it (no spotlight). */
+  const [visit, setVisit] = useState<Rect | null>(null);
+  const [quip, setQuip] = useState<string | null>(null);
+  /** When roaming, the x it wandered to along the bottom; null = home. */
+  const [roamX, setRoamX] = useState<number | null>(null);
+  const [travelling, setTravelling] = useState(false);
+  const [facing, setFacing] = useState<1 | -1>(1);
+  // Latest values for listeners and timers registered once.
+  const live = useRef({
+    busy: false,
+    panelOpen,
+    hover: false,
+    sleeping: false,
+  });
+  live.current = {
+    busy: petState !== "idle" || !!target || !!run,
+    panelOpen,
+    hover,
+    sleeping,
+  };
 
   // Track the target's rect through scroll, resize, layout shifts and re-mounts.
   useEffect(() => {
@@ -109,6 +131,81 @@ export function PetLayer() {
     };
   }, []);
 
+  // ── Reacting to the page ─────────────────────────────────────
+  // One capture listener per event type sees every tagged control, so product UIs need no wiring;
+  // a guide run or a reply in progress always wins over these small reactions.
+  useEffect(() => {
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    let typing: ReturnType<typeof setTimeout> | undefined;
+    const apply = (el: HTMLElement, e: PageEvent) => {
+      if (live.current.busy) return;
+      const r = respondTo(e);
+      if (!r) return;
+      lastActivity.current = Date.now();
+      setSleeping(false);
+      setRoamX(null);
+      setReaction(r.reaction);
+      setQuip(r.quip ?? null);
+      if (r.visit) {
+        const b = el.getBoundingClientRect();
+        setVisit({ x: b.x, y: b.y, width: b.width, height: b.height });
+      }
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        setReaction(null);
+        setQuip(null);
+        setVisit(null);
+      }, 3_200);
+    };
+    const on = (kind: PageEvent["kind"]) => (ev: Event) => {
+      const el = (ev.target as Element | null)?.closest?.<HTMLElement>("[data-companion]");
+      const id = el?.dataset.companion;
+      if (!el || !id?.startsWith("titan-")) return;
+      const input = el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el : el.querySelector("input");
+      const e: PageEvent = { id, kind, value: input?.value };
+      // Typing is debounced so the pet reacts to the number, not to every keystroke.
+      if (kind === "input") {
+        clearTimeout(typing);
+        typing = setTimeout(() => apply(el, e), 450);
+      } else apply(el, e);
+    };
+    const handlers = {
+      input: on("input"),
+      click: on("click"),
+      change: on("change"),
+    };
+    for (const [type, fn] of Object.entries(handlers)) document.addEventListener(type, fn, true);
+    return () => {
+      for (const [type, fn] of Object.entries(handlers)) document.removeEventListener(type, fn, true);
+      clearTimeout(settle);
+      clearTimeout(typing);
+    };
+  }, []);
+
+  // A guide run takes over: drop any page reaction in progress.
+  useEffect(() => {
+    if (target || run || petState !== "idle") {
+      setVisit(null);
+      setQuip(null);
+      setRoamX(null);
+    }
+  }, [target, run, petState]);
+
+  // Roaming: when nobody needs it, it sometimes trots along the bottom and back home.
+  useEffect(() => {
+    if (reduceMotion) return;
+    const t = setInterval(() => {
+      const l = live.current;
+      if (l.busy || l.panelOpen || l.hover || l.sleeping) return setRoamX(null);
+      const w = window.innerWidth;
+      setRoamX((x) => (x == null && Math.random() < 0.7 ? 16 + Math.random() * Math.max(0, w - PET.width - 32) : null));
+    }, 9_000);
+    return () => clearInterval(t);
+  }, [reduceMotion]);
+  useEffect(() => {
+    if (panelOpen) setRoamX(null);
+  }, [panelOpen]);
+
   /** A different reaction every hover, never the same twice in a row. */
   const react = () => {
     if (petState !== "idle") return;
@@ -121,19 +218,55 @@ export function PetLayer() {
   };
 
   const avoid: Rect[] = [];
-  if (panelOpen && !run) avoid.push({ x: viewport.width - 424, y: viewport.height - 640, width: 424, height: 640 });
-  if (run) avoid.push({ x: viewport.width / 2 - 260, y: viewport.height - 132, width: 520, height: 132 });
+  if (panelOpen && !run)
+    avoid.push({
+      x: viewport.width - 424,
+      y: viewport.height - 640,
+      width: 424,
+      height: 640,
+    });
+  if (run)
+    avoid.push({
+      x: viewport.width / 2 - 260,
+      y: viewport.height - 132,
+      width: 520,
+      height: 132,
+    });
 
-  const placement: Placement | null = targetRect ? placePet({ target: targetRect, viewport, pet: PET, avoid }) : null;
-  const pos = placement ?? homePosition(viewport, PET);
-  const shownState = hover && petState === "idle" && !placement && !reaction ? "hover" : petState;
+  const guide: Placement | null = targetRect ? placePet({ target: targetRect, viewport, pet: PET, avoid }) : null;
+  // A visit stands beside the control's column, never above/below it, so it can't cover the numbers.
+  const visitAvoid: Rect[] = visit ? [...avoid, { x: visit.x - 8, y: 0, width: visit.width + 16, height: viewport.height }] : avoid;
+  const placement = guide ?? (visit ? placePet({ target: visit, viewport, pet: PET, avoid: visitAvoid }) : null);
+  const home = homePosition(viewport, PET);
+  const pos = placement ?? (roamX != null ? { x: roamX, y: home.y } : home);
+
+  // Walking: legs trot and the pet faces where it is going, then turns back to the user on arrival.
+  const prevPos = useRef(pos);
+  const travelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    const dx = pos.x - prevPos.current.x;
+    const dy = pos.y - prevPos.current.y;
+    prevPos.current = { x: pos.x, y: pos.y };
+    if (Math.hypot(dx, dy) < 24) return;
+    if (Math.abs(dx) > 4) setFacing(dx < 0 ? -1 : 1);
+    setTravelling(true);
+    clearTimeout(travelTimer.current);
+    travelTimer.current = setTimeout(() => setTravelling(false), 750);
+  }, [pos.x, pos.y]);
+
+  const shownState =
+    travelling && petState === "idle" && !reaction
+      ? "moving"
+      : hover && petState === "idle" && !placement && !reaction
+        ? "hover"
+        : petState;
   petCenter.current = { x: pos.x + PET.width / 2, y: pos.y + PET.height / 2 };
 
   // Bubble placement: when the pet is above/below its target, stacking the bubble vertically would
   // cover the content it is explaining, so it goes beside the pet instead. Otherwise above the pet
   // (below if there's no room). Always nudged inside the viewport.
   const bubbleWidth = Math.min(300, viewport.width - 32);
-  const beside = placement && (placement.side === "above" || placement.side === "below");
+  const beside = guide && (guide.side === "above" || guide.side === "below");
   const roomRight = viewport.width - (pos.x + PET.width);
   const besideX = roomRight >= bubbleWidth + 24 ? pos.x + PET.width + 12 : pos.x - bubbleWidth - 12;
   const bubbleAbove = !beside && pos.y > 170;
@@ -168,7 +301,9 @@ export function PetLayer() {
               className="absolute inset-0 rounded-2xl border-2 border-[var(--accent-2)]"
               animate={{ opacity: [0.9, 0.35, 0.9], scale: [1, 1.025, 1] }}
               transition={{ duration: 1.8, repeat: Infinity }}
-              style={{ boxShadow: "0 0 0 4px rgba(59, 139, 234, 0.18), 0 0 28px 4px rgba(59, 139, 234, 0.35)" }}
+              style={{
+                boxShadow: "0 0 0 4px rgba(59, 139, 234, 0.18), 0 0 28px 4px rgba(59, 139, 234, 0.35)",
+              }}
             />
           </motion.div>
         )}
@@ -177,7 +312,7 @@ export function PetLayer() {
       {/* Speech bubble (also the live caption for TTS) */}
       <AnimatePresence>
         {/* At home with the panel open, the panel already shows the words; a bubble would cover them. */}
-        {bubble && (placement || (petState !== "idle" && !panelOpen)) && (
+        {bubble && (guide || (petState !== "idle" && !panelOpen)) && (
           <motion.div
             key="bubble"
             role="status"
@@ -213,7 +348,30 @@ export function PetLayer() {
             exit={{ opacity: 0 }}
             style={{ left: pos.x - 150, top: pos.y + 30 }}
           >
-            Need help with Reflect?
+            Need help with Titan?
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Quip: a few words about what the user just did */}
+      <AnimatePresence>
+        {quip && !bubble && (
+          <motion.div
+            key={quip}
+            className="absolute whitespace-nowrap rounded-full border-2 border-[var(--pet-outline)] bg-[var(--pet-mid)] px-3 py-1 text-xs font-bold text-[var(--pet-outline)] shadow-lg"
+            initial={{ opacity: 0, y: 8, scale: 0.8 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              left: Math.max(8, Math.min(pos.x + PET.width / 2, viewport.width - 8)),
+              top: pos.y - 6,
+            }}
+            exit={{ opacity: 0, y: -6, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 22 }}
+            style={{ x: "-50%", translateY: "-100%" }}
+          >
+            {quip}
           </motion.div>
         )}
       </AnimatePresence>
@@ -222,8 +380,8 @@ export function PetLayer() {
       <motion.button
         type="button"
         data-testid="companion-pet"
-        aria-label={panelOpen ? "Close Reflect guide" : "Open Reflect guide"}
-        className="pointer-events-auto absolute cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-2)]"
+        aria-label={panelOpen ? "Close Milo" : "Talk to Milo"}
+        className="pointer-events-auto absolute cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-2)] transition-transform hover:scale-105 active:scale-95"
         style={{ width: PET.width, height: PET.height }}
         initial={false}
         animate={{ left: pos.x, top: pos.y }}
@@ -235,15 +393,17 @@ export function PetLayer() {
         onMouseLeave={() => setHover(false)}
         onClick={() => setPanelOpen(!panelOpen)}
       >
-        <Pet
-          state={shownState}
-          lookAngle={placement?.angle ?? null}
-          gazeAngle={petState === "idle" ? gaze : null}
-          reaction={reaction}
-          sleeping={sleeping}
-          voiceLevel={voice.listening ? micLevel : 0}
-          size={PET.width}
-        />
+        <motion.div animate={{ scaleX: travelling && !guide ? facing : 1 }} transition={{ type: "spring", stiffness: 500, damping: 30 }}>
+          <Pet
+            state={shownState}
+            lookAngle={placement?.angle ?? null}
+            gazeAngle={petState === "idle" ? gaze : null}
+            reaction={reaction}
+            sleeping={sleeping}
+            voiceLevel={voice.listening ? micLevel : 0}
+            size={PET.width}
+          />
+        </motion.div>
         {/* attention dot when idle & closed: there is help available */}
         {!panelOpen && petState === "idle" && !voice.listening && (
           <span className="absolute right-2 top-3 h-3 w-3 animate-ping rounded-full bg-[var(--accent-2)] opacity-60" />
@@ -291,11 +451,31 @@ function BubbleTail({ side, offset }: { side: "top" | "bottom" | "left" | "right
   const EDGE = "1px solid var(--line)";
   const pos =
     side === "bottom"
-      ? { bottom: -6, left: (offset ?? 24) - 6, borderRight: EDGE, borderBottom: EDGE }
+      ? {
+          bottom: -6,
+          left: (offset ?? 24) - 6,
+          borderRight: EDGE,
+          borderBottom: EDGE,
+        }
       : side === "top"
-        ? { top: -6, left: (offset ?? 24) - 6, borderLeft: EDGE, borderTop: EDGE }
+        ? {
+            top: -6,
+            left: (offset ?? 24) - 6,
+            borderLeft: EDGE,
+            borderTop: EDGE,
+          }
         : side === "left"
-          ? { left: -6, top: "calc(50% - 6px)", borderLeft: EDGE, borderBottom: EDGE }
-          : { right: -6, top: "calc(50% - 6px)", borderRight: EDGE, borderTop: EDGE };
+          ? {
+              left: -6,
+              top: "calc(50% - 6px)",
+              borderLeft: EDGE,
+              borderBottom: EDGE,
+            }
+          : {
+              right: -6,
+              top: "calc(50% - 6px)",
+              borderRight: EDGE,
+              borderTop: EDGE,
+            };
   return <span aria-hidden className={base} style={pos} />;
 }
