@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { TokenBucketLimiter } from "@/lib/server/rate-limit";
 import { applyDomainCorrections, normaliseTranscript, voiceConfigFromEnv } from "@/lib/server/voice";
 import { VoiceActivityDetector } from "@/lib/companion/voice-server";
+import { voiceLength } from "@/lib/server/llm/orchestrator";
 
 describe("TokenBucketLimiter", () => {
   it("allows a burst, then refills at the sustained rate", () => {
@@ -79,5 +80,18 @@ describe("voice helpers", () => {
     expect(voiceConfigFromEnv({} as NodeJS.ProcessEnv)).toBeNull();
     const cfg = voiceConfigFromEnv({ LLM_API_KEY: "k", LLM_BASE_URL: "https://x/v1/", STT_MODEL: "whisper" } as unknown as NodeJS.ProcessEnv)!;
     expect(cfg).toMatchObject({ baseUrl: "https://x/v1", sttModel: "whisper", ttsModel: null });
+  });
+});
+
+describe("voiceLength", () => {
+  it("keeps at most three sentences, cut at a boundary", () => {
+    expect(voiceLength("One. Two! Three? Four. Five.")).toBe("One. Two! Three?");
+  });
+  it("respects the character budget without cutting a sentence in half", () => {
+    const long = `${"a".repeat(200)}. ${"b".repeat(200)}.`;
+    expect(voiceLength(long)).toBe(`${"a".repeat(200)}.`);
+  });
+  it("keeps decimals intact", () => {
+    expect(voiceLength("USDC+ pays 1.7% right now. It is variable.")).toBe("USDC+ pays 1.7% right now. It is variable.");
   });
 });

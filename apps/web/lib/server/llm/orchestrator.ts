@@ -217,7 +217,23 @@ export function speakable(text: string): string {
     .replace(/\u2011/g, "-")
     .replace(/\s+/g, " ")
     .trim();
-  return plain || "Sorry, could you say that again?";
+  return voiceLength(plain) || "Sorry, could you say that again?";
+}
+
+/**
+ * Listening is slower than reading, so spoken replies are capped at ~3 sentences / 320 chars,
+ * cut at a sentence boundary (never mid-sentence; a single long sentence is kept whole up to 400).
+ */
+export function voiceLength(text: string, maxSentences = 3, maxChars = 320): string {
+  // Split only where punctuation is followed by whitespace: "1.7%" and "U.S." stay intact.
+  const sentences = text.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+  let out = "";
+  for (const sentence of sentences.slice(0, maxSentences)) {
+    const next = out ? `${out} ${sentence}` : sentence;
+    if (out && next.length > maxChars) break;
+    out = next;
+  }
+  return out.length > 400 ? `${out.slice(0, 397).replace(/\s+\S*$/, "")}…` : out;
 }
 
 /**
