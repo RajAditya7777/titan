@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion, type TargetAndTransition } from "motion/react";
 import type { PetState } from "./CompanionProvider";
 import { ARM_TOP, ARMS, cells, LEG_TOP, LEGS, SPRITE, TAIL, TAIL_COL, TAIL_ROW, U } from "./pet-sprite";
@@ -55,15 +55,17 @@ function Cells({ rows, col0, row0 }: { rows: string[]; col0?: number; row0?: num
 
 /** Squash-and-stretch keyframes: the classic animation principle that makes a body feel soft. */
 const REACTION_ANIM: Record<Reaction, TargetAndTransition> = {
-  wave: { rotate: [0, -3, 3, -3, 0], y: -3, transition: { duration: 1.1 } },
+  wave: { y: [0, -3, -2, -3, 0], transition: { duration: 1.1 } },
   clap: { y: [0, -3, 0, -3, 0], transition: { duration: 0.8 } },
-  wiggle: { rotate: [0, -8, 7, -6, 4, 0], transition: { duration: 0.9 } },
+  // Hips sway side to side (weight shifts between paws), the picture never tilts.
+  wiggle: { x: [0, -4, 4, -3, 3, 0], scaleX: [1, 1.04, 1.04, 1.02, 1.02, 1], transition: { duration: 0.9 } },
   giggle: { y: [0, -3, 0, -3, 0, -3, 0], transition: { duration: 0.9 } },
   hop: { y: [0, 4, -14, 0, -4, 0], scaleY: [1, 0.92, 1.05, 0.95, 1], transition: { duration: 0.8 } },
   hearts: { scale: [1, 1.08, 1], y: -4, transition: { duration: 0.6 } },
-  hi: { rotate: [0, 5, -4, 5, 0], y: [0, -4, 0], transition: { duration: 0.8, ease: "easeInOut" } },
+  hi: { y: [0, 3, -6, 0], scaleY: [1, 0.94, 1.04, 1], transition: { duration: 0.7, ease: "easeInOut" } },
   cheer: { y: [0, 3, -12, 0, -4, 0], scaleY: [1, 0.92, 1.05, 0.95, 1], transition: { duration: 0.8 } },
-  roll: { rotate: [0, -28, 28, -20, 20, 0], y: [0, 6, 8, 4, 0], scaleX: [1, 1.06, 0.96, 1], transition: { duration: 1.2, ease: "easeInOut" } },
+  // Spins on the spot: the classic sprite turn (squeeze to edge-on, flip, back), with a little hop.
+  roll: { scaleX: [1, 0.12, -1, 0.12, 1], y: [0, -6, -8, -6, 0], transition: { duration: 0.9, ease: "easeInOut" } },
 };
 
 /**
@@ -94,6 +96,10 @@ const GESTURES: Partial<Record<Reaction | "celebrating" | "moving" | "speaking",
   speaking: { left: still, right: { rotate: [-10, -22, -10], transition: loop(1.1) } },
 };
 
+/** Before it sets off: a crouch, weight back. On arrival: squash on contact, overshoot, settle. */
+const ANTICIPATE: TargetAndTransition = { y: 3, scaleY: 0.88, scaleX: 1.07, x: 0, transition: { duration: 0.14, ease: "easeOut" } };
+const LAND: TargetAndTransition = { y: [2, -2, 0], scaleY: [0.88, 1.06, 1], scaleX: [1.08, 0.97, 1], x: 0, transition: { duration: 0.38, ease: "easeOut" } };
+
 const SLEEP_ANIM: TargetAndTransition = { scaleY: [1, 0.95, 1], transition: { duration: 3.6, repeat: Infinity, ease: "easeInOut" } };
 
 const BODY_BOB: Partial<Record<Props["state"], TargetAndTransition>> = {
@@ -103,12 +109,18 @@ const BODY_BOB: Partial<Record<Props["state"], TargetAndTransition>> = {
   listening: { y: [0, -2, 0], transition: { duration: 1.4, repeat: Infinity } },
   thinking: { y: [0, -1, 0], transition: { duration: 2.2, repeat: Infinity, ease: "easeInOut" } },
   speaking: { y: [0, -2, 0], transition: { duration: 0.5, repeat: Infinity } },
-  // A lean plus a stride bounce in step with the legs (LEG_STEP): down on the footfall, up mid-stride.
-  moving: { rotate: 4, y: [0, -5, 0], scaleY: [0.96, 1.03, 0.96], transition: { duration: 0.32, repeat: Infinity, ease: "easeInOut" } },
+  // Front-view gait: hips shift onto the stepping paw and the body dips on each footfall (two per
+  // stride, in step with LEG_STEP). No lean: tilting the whole sprite is what read as a flat image.
+  moving: {
+    x: [-1.5, 0, 1.5, 0, -1.5],
+    y: [0, -4, 0, -4, 0],
+    scaleY: [0.97, 1.03, 0.97, 1.03, 0.97],
+    transition: { duration: 0.64, repeat: Infinity, ease: "easeInOut" },
+  },
   pointing: { y: [0, -2, 0], transition: { duration: 2, repeat: Infinity, ease: "easeInOut" } },
   waiting: { y: [0, -2, 0], transition: { duration: 2.6, repeat: Infinity, ease: "easeInOut" } },
   celebrating: { y: [0, -18, 0, -10, 0], scaleY: [1, 1.08, 0.88, 1.04, 1], transition: { duration: 0.9, repeat: 1 } },
-  error: { rotate: -6, x: [0, -3, 3, -2, 0], transition: { duration: 0.5 } },
+  error: { x: [0, -3, 3, -2, 0], scaleY: [1, 0.96, 1], transition: { duration: 0.5 } },
 };
 
 /** The head tilts on its own: curious while thinking, attentive while listening. */
@@ -131,6 +143,25 @@ const LEG_STEP: TargetAndTransition = { y: [0, -U / 2, 0], transition: { type: "
 
 export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleeping = false, voiceLevel = 0, size = 88, heading = 1 }: Props) {
   const reduce = useReducedMotion();
+  // Movement phases around a walk: anticipate (just started), land (just stopped).
+  const [phase, setPhase] = useState<"none" | "anticipate" | "land">("none");
+  const prevState = useRef(state);
+  useEffect(() => {
+    const was = prevState.current;
+    prevState.current = state;
+    if (state === "moving" && was !== "moving") {
+      setPhase("anticipate");
+      const t = setTimeout(() => setPhase("none"), 140);
+      return () => clearTimeout(t);
+    }
+    if (was === "moving" && state !== "moving") {
+      setPhase("land");
+      const t = setTimeout(() => setPhase("none"), 380);
+      return () => clearTimeout(t);
+    }
+  }, [state]);
+  const walking = state === "moving" && phase !== "anticipate";
+  const faceTurnFor = (deg: number | null) => (deg == null ? 0 : Math.round(Math.cos((deg * Math.PI) / 180) * 2));
   const look = lookAngle ?? (sleeping ? null : gazeAngle);
   const rad = look == null ? null : (look * Math.PI) / 180;
   // Pupils shift by at most 3px, so they stay inside the eye at every angle.
@@ -140,16 +171,17 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
   const asleep = sleeping && state === "idle" && !reaction;
   const happy = reaction === "giggle" || reaction === "hearts" || reaction === "wave" || reaction === "roll";
   const eyeMood = asleep ? "sleep" : happy ? "hover" : state;
+  const faceTurn = faceTurnFor(look);
   const body = useMemo<TargetAndTransition>(
     () =>
       reduce
         ? REST
         : {
             ...REST,
-            ...(reaction ? REACTION_ANIM[reaction] : asleep ? SLEEP_ANIM : (BODY_BOB[state] ?? {})),
-            ...(state === "moving" && !reaction ? { rotate: 4 * heading } : {}),
+            ...(reaction && state !== "moving" ? REACTION_ANIM[reaction] : asleep ? SLEEP_ANIM : (BODY_BOB[state] ?? {})),
+            ...(phase === "anticipate" ? ANTICIPATE : phase === "land" ? LAND : {}),
           },
-    [reduce, reaction, asleep, state, heading],
+    [reduce, reaction, asleep, state, phase],
   );
   // While pointing, the paw on the target's side points at it (0° hangs down, so aim = angle − 90°).
   const aim = lookAngle == null ? 0 : (((lookAngle - 90 + 540) % 360) - 180);
@@ -252,7 +284,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
       >
         {/* tail, behind the body */}
         <motion.g
-          animate={reduce ? {} : tailWag(state, asleep, happy)}
+          animate={reduce ? {} : walking ? { rotate: [-heading * 22, -heading * 10, -heading * 22], transition: { duration: 0.32, repeat: Infinity, ease: "easeInOut" } } : tailWag(state, asleep, happy)}
           style={{ transformOrigin: `${(TAIL_COL + 1) * U}px ${(TAIL_ROW + 7) * U}px` }}
         >
           <Cells rows={TAIL} col0={TAIL_COL} row0={TAIL_ROW} />
@@ -262,8 +294,8 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
         {LEGS.map(([col, rows], i) => (
           <motion.g
             key={col}
-            animate={state === "moving" && !reduce ? LEG_STEP : { y: 0 }}
-            transition={state === "moving" ? { type: "tween", delay: i % 2 ? 0.16 : 0, duration: 0.32, ease: "easeInOut" } : { type: "spring", stiffness: 260, damping: 16 }}
+            animate={walking && !reduce ? LEG_STEP : { y: 0 }}
+            transition={walking ? { type: "tween", delay: i % 2 ? 0.32 : 0, duration: 0.32, ease: "easeInOut" } : { type: "spring", stiffness: 260, damping: 16 }}
           >
             <Cells rows={rows} col0={col} row0={LEG_TOP} />
           </motion.g>
@@ -275,13 +307,47 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
           animate={reduce ? {} : headTilt}
           style={{ transformOrigin: `60px ${11 * U}px` }}
         >
-          <Cells rows={SPRITE.slice(0, 12)} />
+         {/* The head follows the body a beat late, so it reads as weight, not one rigid picture. */}
+         <motion.g
+          animate={reduce ? {} : walking ? { y: [1, -1, 1, -1, 1] } : phase === "land" ? { y: [0, 2, 0] } : { y: 0 }}
+          transition={walking ? { duration: 0.64, repeat: Infinity, ease: "easeInOut", delay: 0.08 } : { duration: 0.35 }}
+         >
+          {/* Ears flop after the head (follow-through), twitch at rest and perk up to listen. */}
+          <motion.g
+            animate={
+              reduce
+                ? {}
+                : walking
+                  ? { y: [0, -2, 0, -2, 0] }
+                  : state === "listening"
+                    ? { y: -3 }
+                    : phase === "land"
+                      ? { y: [0, 3, -1, 0] }
+                      : { y: [0, 0, -2, 0, 0, 0] }
+            }
+            transition={
+              walking
+                ? { duration: 0.64, repeat: Infinity, ease: "easeInOut", delay: 0.16 }
+                : state === "listening"
+                  ? { type: "spring", stiffness: 300, damping: 12 }
+                  : phase === "land"
+                    ? { duration: 0.45 }
+                    : { duration: 5.5, repeat: Infinity, times: [0, 0.6, 0.63, 0.66, 0.9, 1] }
+            }
+          >
+            <Cells rows={SPRITE.slice(0, 3)} />
+          </motion.g>
+          <Cells rows={SPRITE.slice(3, 12)} row0={3} />
+          {/* Face turn: features slide toward where it's heading, so the head reads as turning. */}
+          <motion.g animate={{ x: walking ? heading * 4 : faceTurn }} transition={{ type: "spring", stiffness: 180, damping: 16 }}>
           {/* blush: always faint, stronger when happy */}
           {[2 * U, 14 * U].map((x) => (
             <rect key={x} x={x} y={7 * U + 3} width={2 * U} height={4} fill="var(--pet-pink)" opacity={happy || state === "celebrating" || state === "hover" ? 0.95 : 0.45} />
           ))}
-          <Eyes mood={eyeMood} dx={eyeDx} dy={eyeDy} />
+          <Eyes mood={eyeMood} dx={eyeDx} dy={eyeDy} idleGlance={!reduce && state === "idle" && look == null && !asleep} />
           <Mouth state={asleep ? "sleep" : state} />
+          </motion.g>
+         </motion.g>
         </motion.g>
 
         {/* front paws: every gesture is a rotation about the shoulder */}
@@ -400,7 +466,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
 }
 
 /** Two bright pixel eyes with a moving pupil and a catch-light. Mood changes shape; they blink on their own. */
-function Eyes({ mood, dx, dy }: { mood: Props["state"] | "sleep"; dx: number; dy: number }) {
+function Eyes({ mood, dx, dy, idleGlance = false }: { mood: Props["state"] | "sleep"; dx: number; dy: number; idleGlance?: boolean }) {
   if (mood === "sleep") {
     return (
       <g fill="var(--pet-outline)">
@@ -442,8 +508,9 @@ function Eyes({ mood, dx, dy }: { mood: Props["state"] | "sleep"; dx: number; dy
             width={6}
             height={Math.min(7, h)}
             fill="var(--pet-outline)"
-            animate={{ x: dx, y: dy }}
-            transition={{ type: "spring", stiffness: 200, damping: 18 }}
+            // At rest with nothing to watch, it glances around now and then instead of staring.
+            animate={idleGlance ? { x: [0, 0, -3, -3, 0, 0, 3, 3, 0], y: [0, 0, 0, -1, 0, 0, 0, 1, 0] } : { x: dx, y: dy }}
+            transition={idleGlance ? { duration: 9, repeat: Infinity, ease: "easeInOut" } : { type: "spring", stiffness: 200, damping: 18 }}
           />
           <rect x={x + 1} y={top + 1} width={3} height={3} fill="#ffffff" />
         </motion.g>
