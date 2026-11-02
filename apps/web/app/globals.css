@@ -16,7 +16,7 @@
   --good: #0f8a5f;
   --bad: #c2334d;
   --on-accent: #ffffff;
-  /* Pet: Titan gold on charcoal, Titan green eyes */
+  /* Pet: Titan gold coat, cream face, charcoal outline, Titan-green eyes */
   --pet-outline: #151513;
   --pet-dark: #c8962a;
   --pet-mid: #f2d363;
@@ -44,6 +44,79 @@
   --on-accent: #100e0a;
   --good: #00d692;
   --bad: #f43f5e;
+  color-scheme: dark;
+}
+
+/* Umbra look (measured from umbraprivacy.com): white, near-black text, electric blue #0100ff.
+   The pet gets a lavender coat with Umbra-blue eyes while it lives on Umbra pages. */
+.umbra-ui {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #f2f2f4;
+  --line: rgba(23, 23, 23, 0.08);
+  --line-strong: rgba(23, 23, 23, 0.14);
+  --text: #171717;
+  --muted: #6b6b76;
+  --ink: #171717;
+  --accent: #0100ff;
+  --accent-2: #5b5bff;
+  --accent-soft: #ececff;
+  --on-accent: #ffffff;
+  --good: #0f8a5f;
+  --bad: #d92d4b;
+  --pet-outline: #0b0b3a;
+  --pet-dark: #6d72e8;
+  --pet-mid: #b9bdff;
+  --pet-light: #f1f2ff;
+  --pet-sock: #0100ff;
+  --pet-pink: #ff9db0;
+  --pet-iris: #0100ff;
+  --pet-accent: #0100ff;
+  color-scheme: light;
+}
+
+/* Umbra page chrome */
+.umbra-site {
+  --u-blue: #0100ff;
+  --u-ink: #171717;
+  --u-muted: #75757f;
+  --u-navy: #10106b;
+  background: #fff;
+  color: var(--u-ink);
+  letter-spacing: -0.01em;
+  font-weight: 450;
+}
+.umbra-dots {
+  background-image: radial-gradient(rgba(1, 0, 255, 0.11) 1px, transparent 1.2px);
+  background-size: 14px 14px;
+}
+.umbra-dots-dark {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.2px);
+  background-size: 14px 14px;
+}
+.umbra-gradient-text {
+  background: linear-gradient(100deg, #0d0d63 0%, #2b2f8f 30%, #6f7bd8 62%, #a7b3f2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Jupiter look (measured from jup.ag): near-black #090d10, panels #131a20, lime #c7f284. */
+.jup-ui {
+  --bg: #0b1014;
+  --surface: #131a20;
+  --surface-2: #1b242c;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+  --text: #e8f0f2;
+  --muted: #8a99a6;
+  --ink: #1b242c;
+  --accent: #c7f284;
+  --accent-2: #a6e05c;
+  --accent-soft: rgba(199, 242, 132, 0.12);
+  --on-accent: #0b1014;
+  --good: #c7f284;
+  --bad: #f25c5c;
   color-scheme: dark;
 }
 

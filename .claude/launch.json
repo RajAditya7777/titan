@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "web",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@companion/web", "dev"],
+      "runtimeExecutable": "/Users/flexer/.local/share/fnm/node-versions/v22.22.1/installation/bin/node",
+      "runtimeArgs": ["apps/web/node_modules/next/dist/bin/next", "dev", "apps/web", "--port", "3200"],
       "port": 3200
     }
   ]

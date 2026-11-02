@@ -26,7 +26,12 @@ export function SettingsDrawer() {
   const priorityTiers: PriorityTier[] = ["auto", "high", "turbo", "custom"];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) setSettingsOpen(false);
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+    >
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#151513] p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
@@ -38,8 +43,9 @@ export function SettingsDrawer() {
           </div>
           <button
             type="button"
+            data-companion="titan-settings-close"
             onClick={() => setSettingsOpen(false)}
-            className="rounded-full p-1 text-[#a8a69f] hover:text-white hover:bg-white/[0.05] transition-colors"
+            className="rounded-full p-1 text-[#a8a69f] hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>

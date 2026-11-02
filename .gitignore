@@ -10,3 +10,4 @@ playwright-report
 *.tsbuildinfo
 apps/web/demo-videos/raw
 apps/web/.models
+.next-*

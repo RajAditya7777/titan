@@ -31,8 +31,15 @@ export const PAGES = {
   titan_profile: { path: "/titan/profile", title: "Titan Portfolio", summary: "View your connected balances, asset allocations, 24h PnL performance, and past Solana transactions." },
   titan_rewards: { path: "/titan/rewards", title: "Titan Rewards & Prime", summary: "Titan Prime zero-fee status, volume points leaderboard, and referral fee rebate rewards." },
   titan_learn: { path: "/titan/learn", title: "Titan Concepts & Learn", summary: "Educational breakdown of DART routing, Argos arbitrage protection, Prime mode, and MEV sandwich protection." },
+  titan_docs: { path: "/titan/docs", title: "Titan Documentation", summary: "Official Titan GitBook clone with Argos routing, DART architecture, Prime tier, limit orders, and TypeScript SDK docs." },
   // Umbra Privacy / Nimbus routes
-  umbra: { path: "/umbra", title: "Umbra Privacy", summary: "Confidential balances, private transfers, and shielding on Solana powered by the Nimbus protocol (simulated demo)." },
+  umbra_home: { path: "/umbra", title: "Umbra", summary: "The Privacy Layer for your Money: hold, send, swap and earn privately on Solana; compliance, Nimbus SDK and FAQs." },
+  umbra_app: { path: "/umbra/app", title: "Umbra App", summary: "The Umbra web app: create an account, then deposit, send, swap and withdraw from a private balance (simulated wallet)." },
+  jup_swap: { path: "/jup", title: "Jupiter Swap", summary: "Swap any Solana token at the best price with Ultra routing; Market, Limit and DCA." },
+  jup_limit: { path: "/jup/limit", title: "Jupiter Limit Order", summary: "Sell or buy when a token reaches your target price, with an expiry." },
+  jup_perps: { path: "/jup/perps", title: "Jupiter Perps", summary: "Long or short SOL, ETH and BTC with up to 250x leverage, backed by JLP." },
+  jup_portfolio: { path: "/jup/portfolio", title: "Jupiter Portfolio", summary: "Track holdings, positions, yield and airdrops across 198 Solana protocols." },
+  umbra: { path: "/umbra/console", title: "Nimbus Console", summary: "Confidential balances, private transfers, and shielding on Solana powered by the Nimbus protocol (simulated demo)." },
 } as const;
 
 export type PageId = keyof typeof PAGES;
@@ -41,12 +48,12 @@ export const PAGE_IDS = Object.keys(PAGES) as PageId[];
 export type ElementKind = "nav" | "button" | "input" | "select" | "display" | "section";
 
 /** Validation rules the guide can check without the LLM. */
-export type ValidationRule = "positive-amount" | "capital" | "token-name" | "token-symbol" | "fee-bps" | "non-empty";
+export type ValidationRule = "positive-amount" | "capital" | "token-name" | "token-symbol" | "fee-bps" | "non-empty" | "token-choice" | "jup-token" | "leverage";
 
 export interface ElementSpec {
   page: PageId | "global";
   /** For global elements: which chrome renders them (the app's tab bar or the marketing header). */
-  layout?: "app" | "site";
+  layout?: "app" | "site" | "jup";
   kind: ElementKind;
   label: string;
   /** What the companion says when asked "what is this?". */
@@ -209,6 +216,11 @@ export const ELEMENTS = {
   "titan-learn-prime": { page: "titan_learn", kind: "section", label: "Prime Liquidity & Zero Fees", description: "How Prime mode unlocks zero protocol fees." },
   "titan-learn-mev": { page: "titan_learn", kind: "section", label: "MEV & Sandwich Protection", description: "Jito bundles preventing front-running bots." },
 
+  // Titan GitBook Docs
+  "titan-docs-reading-pane": { page: "titan_docs", kind: "section", label: "Documentation Reading Pane", description: "The active documentation chapter with detailed technical breakdowns and code examples." },
+  "titan-docs-ask-milo": { page: "titan_docs", kind: "button", label: "Ask Milo Interactive Questions", description: "Quick questions you can ask Milo about Titan's architecture, Argos, DART, and APIs." },
+  "titan-docs-search": { page: "titan_docs", kind: "input", label: "Search GitBook", description: "Search across all Titan documentation articles.", fillable: true },
+
   // Umbra Privacy / Nimbus
   "umbra-nav-account": { page: "umbra", kind: "nav", label: "Account Status", description: "Inspect registration status, derived platform wallet, and balances." },
   "umbra-nav-deposit": { page: "umbra", kind: "nav", label: "Deposit / Shield", description: "Deposit assets into the Nimbus shielded pool." },
@@ -255,6 +267,67 @@ export const ELEMENTS = {
   "umbra-privacy-toggle": { page: "umbra", kind: "button", label: "Toggle Privacy Details", description: "Expand or collapse detailed breakdowns of documented leaks." },
   "umbra-privacy-matrix": { page: "umbra", kind: "display", label: "Visibility Matrix", description: "Side-by-side comparison of public vs hidden fields." },
   "umbra-privacy-leaks": { page: "umbra", kind: "section", label: "Documented Limits", description: "Explains correlation risks, recipient discovery, and absence of timelocks." },
+
+  // Umbra web: landing page (umbraprivacy.com layout)
+  "umb-nav-get-started": { page: "umbra_home", kind: "button", label: "Get Started", description: "Opens the Umbra web app, where you create an account and use your private balance." },
+  "umb-hero": { page: "umbra_home", kind: "section", label: "The Privacy Layer for your Money", description: "Umbra's promise: privacy for your transactions and ownership of your assets, on Solana." },
+  "umb-hero-widget": { page: "umbra_home", kind: "section", label: "Deposit, Send, Swap, Withdraw", description: "The same four actions as the app. Creating an account here takes you into the Umbra app." },
+  "umb-manifesto": { page: "umbra_home", kind: "section", label: "Manifesto", description: "Why Umbra exists: financial privacy should be easy, accessible and the default." },
+  "umb-features": { page: "umbra_home", kind: "section", label: "Send, hold, swap & earn", description: "Four ways to use money privately: swap, hold, earn up to 3.5% on USDv, and send through private pools." },
+  "umb-feature-earn": { page: "umbra_home", kind: "section", label: "Earn privately", description: "Earn up to 3.5% yield with USDv, a fully reserved digital dollar on Solana, while Umbra keeps it private." },
+  "umb-compliance": { page: "umbra_home", kind: "section", label: "Compliance built in", description: "Perimeter screening, registered recipients, granular self disclosure and self custody." },
+  "umb-nimbus": { page: "umbra_home", kind: "section", label: "Build with Nimbus", description: "Nimbus is the privacy network under Umbra. Builders get private payments, self custody and one SDK integration." },
+  "umb-usecases": { page: "umbra_home", kind: "section", label: "Privacy that fits your product", description: "Payments, cross-border, tokenised stocks, strategic deals, wallets, treasury, DeFi and merchant checkout." },
+  "umb-faq": { page: "umbra_home", kind: "section", label: "Your Questions, Answered", description: "Plain answers on what is private, who controls funds, fees and withdrawals." },
+
+  // Umbra web: app (v2.umbraprivacy.com layout)
+  "umb-tab-deposit": { page: "umbra_app", kind: "nav", label: "Deposit", description: "Move tokens from your wallet into your private balance." },
+  "umb-tab-send": { page: "umbra_app", kind: "nav", label: "Send", description: "Send from your private balance to another registered Umbra user." },
+  "umb-tab-swap": { page: "umbra_app", kind: "nav", label: "Swap", description: "Swap inside your private balance without showing the trade publicly." },
+  "umb-tab-withdraw": { page: "umbra_app", kind: "nav", label: "Withdraw", description: "Move tokens from your private balance back to a public Solana wallet." },
+  "umb-amount": { page: "umbra_app", kind: "input", label: "Amount", description: "How much you want to move.", validation: "positive-amount", fillable: true },
+  "umb-token": { page: "umbra_app", kind: "select", label: "Token", description: "Which token to use. Pick SOL, USDC, USDT or USDv.", validation: "token-choice", fillable: true },
+  "umb-swap-to": { page: "umbra_app", kind: "select", label: "Swap to", description: "The token you receive from the swap.", validation: "token-choice", fillable: true },
+  "umb-recipient": { page: "umbra_app", kind: "input", label: "Recipient", description: "The Solana address of a registered Umbra user. Private sends only go to registered recipients.", validation: "non-empty", fillable: true },
+  "umb-destination": { page: "umbra_app", kind: "input", label: "Destination", description: "The public wallet that receives your withdrawal. A fresh address keeps it unlinked from you.", validation: "non-empty", fillable: true },
+  "umb-privacy-note": { page: "umbra_app", kind: "display", label: "What is public", description: "What observers can and cannot see for this action." },
+  "umb-balance": { page: "umbra_app", kind: "display", label: "Private balance", description: "Your private balance. Only your device can decrypt it; it is not shown on chain." },
+  "umb-create-account": { page: "umbra_app", kind: "button", label: "Create an account", description: "Connects your wallet. Umbra uses your existing Solana wallet; there is no new address." },
+  "umb-wallet-connect": { page: "umbra_app", kind: "button", label: "Connect demo wallet", description: "Connects the simulated demo wallet. No real wallet or funds are involved." },
+  "umb-register": { page: "umbra_app", kind: "button", label: "Register", description: "Registering sets up the keys for private payments. Your wallet signs it.", sensitive: true },
+  "umb-submit": { page: "umbra_app", kind: "button", label: "Confirm", description: "Submits the action. Your wallet approves it; the companion never does.", sensitive: true },
+  "umb-approve": { page: "umbra_app", kind: "button", label: "Approve in wallet", description: "The wallet approval. Only you can do this.", sensitive: true },
+  "umb-new-user": { page: "umbra_app", kind: "section", label: "New user help", description: "Starts a guided first private deposit." },
+
+  // Jupiter (jup.ag layout)
+  "jup-connect": { page: "global", layout: "jup", kind: "button", label: "Connect", description: "Connects a wallet. This demo uses a simulated wallet with play money." },
+  "jup-wallet-connect": { page: "global", layout: "jup", kind: "button", label: "Demo wallet", description: "The simulated wallet. No real funds." },
+  "jup-approve": { page: "global", layout: "jup", kind: "button", label: "Approve in wallet", description: "The wallet approval. Only you can do this.", sensitive: true },
+  "jup-swap-card": { page: "jup_swap", kind: "section", label: "Swap", description: "Sell one token, buy another, at the best route Jupiter finds." },
+  "jup-tab-market": { page: "jup_swap", kind: "nav", label: "Market", description: "Swap right now at the best available price." },
+  "jup-tab-limit": { page: "jup_swap", kind: "nav", label: "Limit", description: "Trade only when the price reaches your target." },
+  "jup-tab-dca": { page: "jup_swap", kind: "nav", label: "DCA", description: "Split a trade into recurring orders over time." },
+  "jup-ultra": { page: "jup_swap", kind: "display", label: "Ultra", description: "Ultra mode sets slippage, priority fees and routing automatically." },
+  "jup-sell-token": { page: "global", layout: "jup", kind: "select", label: "Sell token", description: "The token you give.", validation: "jup-token", fillable: true },
+  "jup-buy-token": { page: "jup_swap", kind: "select", label: "Buy token", description: "The token you get.", validation: "jup-token", fillable: true },
+  "jup-sell-amount": { page: "global", layout: "jup", kind: "input", label: "Sell amount", description: "How much you sell.", validation: "positive-amount", fillable: true },
+  "jup-flip": { page: "jup_swap", kind: "button", label: "Flip", description: "Swap the sell and buy tokens." },
+  "jup-quote": { page: "jup_swap", kind: "display", label: "Quote & route", description: "What you receive, the rate, price impact and the route found." },
+  "jup-swap-submit": { page: "jup_swap", kind: "button", label: "Swap", description: "Submits the swap for your wallet to approve.", sensitive: true },
+  "jup-limit-price": { page: "jup_limit", kind: "input", label: "Target price", description: "The price at which the order fills, or better.", validation: "positive-amount", fillable: true },
+  "jup-limit-expiry": { page: "jup_limit", kind: "select", label: "Expires in", description: "How long the order stays open." },
+  "jup-limit-submit": { page: "jup_limit", kind: "button", label: "Place order", description: "Places the limit order after your wallet approves.", sensitive: true },
+  "jup-perps-markets": { page: "jup_perps", kind: "section", label: "Markets", description: "SOL, ETH and BTC perpetual markets." },
+  "jup-perps-chart": { page: "jup_perps", kind: "display", label: "Price chart", description: "The mark price of the selected market." },
+  "jup-perps-long": { page: "jup_perps", kind: "button", label: "Long/Buy", description: "Profit if the price goes up." },
+  "jup-perps-short": { page: "jup_perps", kind: "button", label: "Short/Sell", description: "Profit if the price goes down." },
+  "jup-perps-amount": { page: "jup_perps", kind: "input", label: "Collateral", description: "The USDC you put up as collateral.", validation: "positive-amount", fillable: true },
+  "jup-perps-leverage": { page: "jup_perps", kind: "input", label: "Leverage", description: "How many times your collateral the position is. Up to 250x.", validation: "leverage", fillable: true },
+  "jup-perps-liq": { page: "jup_perps", kind: "display", label: "Liquidation price", description: "If the price reaches this, the position is closed and the collateral lost." },
+  "jup-perps-submit": { page: "jup_perps", kind: "button", label: "Open position", description: "Opens the position after your wallet approves.", sensitive: true },
+  "jup-portfolio-search": { page: "jup_portfolio", kind: "input", label: "Wallet search", description: "Track any wallet address or .sol domain." },
+  "jup-portfolio-demo": { page: "jup_portfolio", kind: "section", label: "Demo wallets", description: "Example wallets to explore the dashboard." },
+  "jup-portfolio-summary": { page: "jup_portfolio", kind: "display", label: "Net worth", description: "Total value of the wallet you're viewing." },
 } as const satisfies Record<string, ElementSpec>;
 
 export type ElementId = keyof typeof ELEMENTS;
@@ -269,7 +342,10 @@ const PREFIXES: [string, PageId][] = [
   ["/stablecoins/", "stablecoin"],
   ["/assets/", "assets"],
   ["/case-studies/", "caseStudies"],
+  ["/titan/docs/", "titan_docs"],
   ["/titan/rewards/", "titan_rewards"],
+  ["/umbra/", "umbra_app"],
+  ["/jup/", "jup_swap"],
 ];
 
 export function pageForPath(pathname: string): PageId {
@@ -283,7 +359,7 @@ export const SITE_PAGES = ["home", "earn", "create", "calculator", "protect", "b
 export const isSitePage = (page: PageId) => (SITE_PAGES as readonly PageId[]).includes(page);
 
 export function elementsOnPage(page: PageId) {
-  const layout = isSitePage(page) ? "site" : "app";
+  const layout = isSitePage(page) ? "site" : page.startsWith("jup_") ? "jup" : "app";
   return ELEMENT_IDS.filter((id) => {
     const el: ElementSpec = ELEMENTS[id];
     return el.page === page || (el.page === "global" && (el.layout ?? layout) === layout);
@@ -316,5 +392,13 @@ export function validate(rule: ValidationRule, value: string): string | null {
     }
     case "non-empty":
       return v ? null : "Required.";
+    case "jup-token":
+      return ["SOL", "USDC", "JUP", "USDT", "BONK", "JitoSOL"].includes(v) ? null : "Pick SOL, USDC, JUP, USDT, BONK or JitoSOL.";
+    case "leverage": {
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 1.1 && n <= 250 ? null : "Leverage is between 1.1x and 250x.";
+    }
+    case "token-choice":
+      return ["SOL", "USDC", "USDT", "USDv"].includes(v) ? null : "Pick SOL, USDC, USDT or USDv.";
   }
 }

@@ -19,7 +19,7 @@ export interface PetResponse {
   visit: boolean;
 }
 
-const AMOUNT_IDS = new Set(["titan-sell-amount-input", "titan-limit-quantity-input", "titan-limit-price-input"]);
+const AMOUNT_IDS = new Set(["titan-sell-amount-input", "titan-limit-quantity-input", "titan-limit-price-input", "umb-amount"]);
 
 export function parseAmount(value: string): number | null {
   const n = Number(value.replace(/,/g, "").trim());
@@ -70,7 +70,19 @@ export function respondTo(e: PageEvent): PetResponse | null {
       return { reaction: "hi", visit: true };
     case "titan-connect-wallet":
       return { reaction: "wave", visit: false };
+    case "umb-create-account":
+      return { reaction: "hearts", quip: "Welcome to Umbra!", visit: true };
+    case "umb-register":
+      return { reaction: "clap", quip: "Keys stay on your device", visit: true };
+    case "umb-submit":
+      return { reaction: "hearts", quip: "Let's check it together", visit: true };
+    case "umb-approve":
+      return { reaction: "wave", quip: "You approve, not me", visit: true };
+    case "umb-token":
+    case "umb-swap-to":
+      return { reaction: "giggle", quip: "Pick a token", visit: true };
   }
+  if (e.id.startsWith("umb-tab-")) return { reaction: "hop", visit: false };
   if (e.id.startsWith("titan-nav-") || e.id.startsWith("titan-tab-")) return { reaction: "hop", visit: false };
   return null;
 }

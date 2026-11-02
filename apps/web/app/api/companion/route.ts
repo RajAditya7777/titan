@@ -12,6 +12,10 @@ const Body = z.object({
   page: z.enum(PAGE_IDS as [string, ...string[]]),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(2_000) })).max(20).default([]),
   fields: z.record(z.string(), z.string().max(64)).default({}),
+  pageContext: z.record(z.string(), z.unknown()).optional(),
+  pageText: z.string().max(6_000).optional(),
+  // A JPEG of the viewport for the vision model; only image data URLs, ~1.5 MB at most.
+  screenshot: z.string().max(2_000_000).regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/).optional(),
 });
 
 export async function POST(req: Request) {

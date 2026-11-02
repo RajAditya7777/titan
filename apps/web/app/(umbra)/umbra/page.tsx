@@ -1,10 +1,16 @@
-import { UmbraApp } from "@/components/umbra/UmbraApp";
+import { UmbraLanding } from "@/components/umbra-web/Landing";
+import { UmbraFooter } from "@/components/umbra-web/chrome";
 
 export const metadata = {
-  title: "Umbra Privacy · Nimbus Shielded Pool",
-  description: "Deposit, transfer and withdraw confidentially on Solana with the Nimbus privacy protocol.",
+  title: "Umbra",
+  description: "The Privacy Layer for your Money. Independent demo with an AI companion; not affiliated with Umbra.",
 };
 
-export default function UmbraPage() {
-  return <UmbraApp />;
+export default function UmbraHomePage() {
+  return (
+    <>
+      <UmbraLanding />
+      <UmbraFooter />
+    </>
+  );
 }

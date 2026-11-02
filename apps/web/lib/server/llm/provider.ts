@@ -6,8 +6,12 @@ import "server-only";
  * Ollama, LM Studio, vLLM…). Model and credentials come only from the environment.
  */
 
+/** Multimodal user content (OpenAI format); used to show vision models a screenshot of the page. */
+export type ContentPart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
+
 export type ChatMessage =
-  | { role: "system" | "user"; content: string }
+  | { role: "system"; content: string }
+  | { role: "user"; content: string | ContentPart[] }
   | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
   | { role: "tool"; tool_call_id: string; content: string };
 
@@ -53,7 +57,7 @@ export class OpenAICompatibleProvider implements LlmProvider {
   readonly name: string;
 
   constructor(
-    private readonly cfg: { baseUrl: string; apiKey: string; model: string; timeoutMs?: number; temperature?: number; reasoningEffort?: string },
+    private readonly cfg: { baseUrl: string; apiKey: string; model: string; timeoutMs?: number; temperature?: number; reasoningEffort?: string; disableThinking?: boolean },
   ) {
     this.name = `openai-compatible:${cfg.model}`;
   }
@@ -91,8 +95,11 @@ export class OpenAICompatibleProvider implements LlmProvider {
           tools: tools.length ? tools : undefined,
           tool_choice: !tools.length ? undefined : opts.forceTool ? { type: "function", function: { name: opts.forceTool } } : "auto",
           temperature: this.cfg.temperature ?? 0.3,
+          max_tokens: 1024,
           // Reasoning models (e.g. gpt-oss) accept this; it trades depth for latency, which voice needs.
           ...(this.cfg.reasoningEffort ? { reasoning_effort: this.cfg.reasoningEffort } : {}),
+          // Hybrid thinking models on vLLM (Qwen3): skip the reasoning pass; it costs seconds per turn.
+          ...(this.cfg.disableThinking ? { chat_template_kwargs: { enable_thinking: false } } : {}),
         }),
         signal: controller.signal,
       });
@@ -124,5 +131,6 @@ export function providerFromEnv(env = process.env): LlmProvider | null {
     model,
     timeoutMs: Number(env.LLM_TIMEOUT_MS) || 30_000,
     reasoningEffort: env.LLM_REASONING_EFFORT || undefined,
+    disableThinking: env.LLM_DISABLE_THINKING === "true",
   });
 }

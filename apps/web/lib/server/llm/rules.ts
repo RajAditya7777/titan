@@ -34,6 +34,7 @@ export type ToolRunner = (tool: string, args: Record<string, unknown>) => Promis
 interface Ctx {
   page: PageId;
   runTool: ToolRunner;
+  pageState?: Record<string, unknown>;
 }
 
 type Reply = Omit<CompanionReply, "engine" | "toolCalls" | "needsClarification"> & { needsClarification?: boolean };
@@ -88,7 +89,43 @@ function matchDocsQuestion(text: string): { speech: string; sectionId: string } 
   return null;
 }
 
+/** Umbra web (landing + app): keyword intents onto the same planners the LLM uses. */
+function routeUmbraWeb(text: string, ctx: Ctx): Reply {
+  const amount = extractNumber(text) ?? undefined;
+  const token = /\busdv\b/i.test(text) ? "USDv" : /\busdt\b/i.test(text) ? "USDT" : /\bsol\b/i.test(text) ? "SOL" : "USDC";
+  const wf = (id: WorkflowId, speech: string, params: WorkflowParams = {}): Reply => ({ speech, workflow: buildWorkflow(id, { amount, inputToken: token, ...params }, ctx.pageState) });
+  if (/\b(deposit|shield|get started|first)\b/i.test(text)) return wf("umbra_web_deposit", "Let's make your first private deposit together. I'll point at each step.");
+  if (/\b(send|pay|transfer)\b/i.test(text)) return wf("umbra_web_send", "Let's send privately. I'll show you each step.");
+  if (/\bswap|trade|exchange\b/i.test(text)) return wf("umbra_web_swap", "Let's swap inside your private balance.");
+  if (/\b(withdraw|cash out|unshield)\b/i.test(text)) return wf("umbra_web_withdraw", "Let's withdraw back to a regular wallet.");
+  if (/\b(public|private|see|visible|anonymous|trace)\b/i.test(text))
+    return wf("umbra_web_privacy", "Private sends hide the sender, recipient, token and amount. Deposits and withdrawals are visible on chain.");
+  if (/\b(earn|yield|usdv|apy|3\.5)\b/i.test(text))
+    return { speech: "You can earn up to 3.5 percent with USDv, a fully reserved digital dollar on Solana, while Umbra keeps it private.", point: ctx.page === "umbra_home" ? { target: "umb-feature-earn" } : undefined };
+  if (/\b(new|tour|how.*work|what is umbra|show me around)\b/i.test(text)) return wf("umbra_web_tour", "Welcome to Umbra! Let me show you around.");
+  return { speech: "I can show you around Umbra, or guide a private deposit, send, swap or withdrawal. What would you like?", needsClarification: true };
+}
+
+/** Jupiter: keyword intents onto the same planners the LLM uses. */
+function routeJupiter(text: string, ctx: Ctx): Reply {
+  const amount = extractNumber(text) ?? undefined;
+  const tokens = [...text.matchAll(/\b(sol|usdc|jup|usdt|bonk|jitosol)\b/gi)].map((m) => m[1]!.toUpperCase().replace("JITOSOL", "JitoSOL"));
+  const wf = (id: WorkflowId, speech: string, params: WorkflowParams = {}): Reply => ({
+    speech,
+    workflow: buildWorkflow(id, { amount, inputToken: tokens[0], outputToken: tokens[1], ...params }, ctx.pageState),
+  });
+  if (/\b(long|short|perp|leverage)\b/i.test(text))
+    return wf("jup_perps", "Let's set up that position carefully.", { side: /short/i.test(text) ? "short" : "long", leverage: text.match(/(\d+(?:\.\d+)?)\s*x\b/i)?.[1] });
+  if (/\b(limit|target price|when .* reaches)\b/i.test(text)) return wf("jup_limit", "Let's place a limit order together.", { price: text.match(/\$\s*(\d+(?:\.\d+)?)/)?.[1] });
+  if (/\b(swap|buy|sell|trade|exchange)\b/i.test(text)) return wf("jup_swap", "Let's do that swap. I'll point at each step.");
+  if (/\b(portfolio|holdings|net ?worth|airdrop)\b/i.test(text)) return wf("jup_portfolio", "Here's where you track everything.");
+  if (/\b(new|tour|how.*work|show me around|what is jupiter)\b/i.test(text)) return wf("jup_tour", "Welcome to Jupiter! Let me show you around.");
+  return { speech: "I can show you around Jupiter, or guide a swap, a limit order or a perps position. What would you like?", needsClarification: true };
+}
+
 async function route(text: string, ctx: Ctx): Promise<Reply> {
+  if (ctx.page.startsWith("jup_")) return routeJupiter(text, ctx);
+  if (ctx.page === "umbra_home" || ctx.page === "umbra_app") return routeUmbraWeb(text, ctx);
   // 1. Umbra / Nimbus Routing
   if (ctx.page === "umbra" || /\b(umbra|nimbus|shield|unshield|stealth|private send|private transfer|confidential)\b/i.test(text)) {
     const umbraMatch = matchUmbraRules(text, getUmbraAppState());
@@ -112,6 +149,9 @@ async function route(text: string, ctx: Ctx): Promise<Reply> {
     ctx.page === "home" ||
     /\b(titan|swap|trade|buy|sell|quote|slippage|price impact|dart|argos|prime|limit order|conditional order)\b/i.test(text)
   ) {
+    if (/\breflect\b/i.test(text) && /\b(new|tour|how.*works)\b/i.test(text)) {
+      return { speech: "Welcome to Reflect! Let me show you around.", workflow: buildWorkflow("onboarding_tour") };
+    }
     // A new user gets the real first-swap walkthrough.
     if (NEW_USER.test(text)) {
       return { speech: "Welcome! I'll walk you through a first swap on Titan, step by step.", workflow: buildWorkflow("titan_tour") };
@@ -198,80 +238,66 @@ async function route(text: string, ctx: Ctx): Promise<Reply> {
   const amount = extractAmount(text);
 
   if (/\b(error|fail(ed|ing|s)?|not working|broken|rejected|won'?t go through)\b/.test(text)) {
-    const message = text.replace(/^.*?(error|failed|failing|says?)[: ]*/, "");
-    if (message.length > 8) {
-      const r = await ctx.runTool("reflect_explain_error", { message });
-      const m = r.data?.matches?.[0];
-      if (m) return { speech: `${m.title}. ${m.explanation} Fix: ${m.fix[0]}` };
+    const r = await ctx.runTool("titan_diagnose_error", { errorMessage: text });
+    if (r.ok && r.data?.possibleCause) {
+      return { speech: `${r.data.possibleCause} Recommended fix: ${r.data.suggestedAction}` };
     }
     return {
       speech:
-        "Let's figure it out. Most failures come from four things: the wallet isn't whitelisted during the closed beta, the price moved past your minimum, the quote expired, or there's not enough SOL for fees. Read me the exact error message and I'll pinpoint it.",
+        "Let's figure it out. On Solana and Titan, most swap failures happen because of high slippage on volatile tokens, insufficient SOL balance for priority fees, or an expired quote blockhash. Check your slippage in Settings or try increasing priority fee.",
       needsClarification: true,
     };
   }
 
-  if (/\b(white ?label|yield ?coin|my own (coin|token|stablecoin)|branded|create (a |my )?(coin|token|stablecoin))\b/.test(text)) {
-    const named = /\bcalled ([a-z0-9 ]{2,24})$/.exec(text)?.[1]?.trim();
-    const params: WorkflowParams = named
-      ? { tokenName: titleCase(named), tokenSymbol: tickerFrom(named) }
-      : { tokenName: "Acme Dollar", tokenSymbol: "ACMEUSD" };
+  if (/\b(dca|dollar cost average|recurring|schedule)\b/i.test(text)) {
     return {
-      speech: "Love it. Let's build your own yieldcoin, step by step. I'll explain each field as we go.",
-      workflow: buildWorkflow("create_whitelabel", params),
+      speech: "Titan DCA lets you split token accumulation over hourly, daily, or weekly intervals with automatic routing. Switch to the DCA tab in Swap to configure it.",
+      point: { target: "titan-tab-dca", say: "Here is the DCA schedule selector." },
     };
   }
 
-  if (/\b(where|how)\b.*\bredeem\b|\bshow me (where|how).*redeem/.test(text)) {
-    return { speech: "Redeem lives right here in the sidebar.", point: { target: "nav-redeem", say: "Redeem lives right here. Click it whenever you want USDC back." } };
-  }
-
-  if (/\bredeem|withdraw|cash out\b/.test(text)) {
+  if (/\b(slice|twap|chunk|anti-impact)\b/i.test(text)) {
     return {
-      speech: amount ? `Sure. Let's redeem ${amount} USDC+.` : "Sure. Let's redeem.",
-      workflow: buildWorkflow("redeem", { amount }),
+      speech: "Titan Slice executes large orders across multiple randomized micro-blocks to minimize price impact and avoid sandwich attacks. Switch to the Slice tab in Swap to try it.",
+      point: { target: "titan-tab-slice", say: "Here is the Slice execution mode." },
     };
   }
 
-  if (/\b(mint|deposit|buy|get) (some )?(usdc\+|usdc plus|usdc|reflect)|\bmint\b/.test(text)) {
-    let speech = amount ? `Absolutely! Let's mint ${amount} USDC+.` : "Absolutely! I'll guide you through minting.";
-    if (amount) {
-      const q = await ctx.runTool("reflect_get_mint_quote", { amount });
-      if (q.ok) speech += ` Right now that's about ${fmt(q.data.expectedOutput.amount)} USDC+.`;
+  if (/\b(chart|candlestick|timeframe|indicator|tradingview)\b/i.test(text)) {
+    return {
+      speech: "Titan Pro Terminal features a live TradingView candlestick chart with 1m to 1h timeframes and technical indicators. Click the Pro tab to view it.",
+      point: { target: "titan-nav-pro", say: "Here is the Pro terminal." },
+    };
+  }
+
+  // Support legacy demo utterances if tested on dashboard/mint pages
+  if (/\b(where|how)\b.*\bredeem\b|\bshow me (where|how).*redeem/i.test(text)) {
+    return { speech: "Redeem lives right here.", point: { target: "nav-redeem", say: "Redeem lives right here." } };
+  }
+  if (/\b(mint|deposit|buy|get) (some )?(usdc\+|usdc plus)|\bmint\b/i.test(text) && !ctx.page.startsWith("titan_")) {
+    const amt = extractAmount(text);
+    let speech = amt ? `Absolutely! Let's mint ${amt} USDC+.` : "Absolutely! I'll guide you through minting.";
+    if (amt) {
+      const q = await ctx.runTool("reflect_get_mint_quote", { amount: amt });
+      if (q.ok) speech += ` Right now that's about ${fmt(q.data?.expectedOutput?.amount)} USDC+.`;
     }
-    return { speech: `${speech} Let's open the Mint section first.`, workflow: buildWorkflow("mint", { amount }) };
+    return { speech, workflow: buildWorkflow("mint", { amount: amt }) };
+  }
+  if (/\b(create (a |my )?(own )?yieldcoin|white ?label)\b/i.test(text)) {
+    return { speech: "Let's build your own yieldcoin.", workflow: buildWorkflow("create_whitelabel", { tokenName: "Acme Dollar", tokenSymbol: "ACMEUSD" }) };
+  }
+  if (/\b(what is apy|explain apy)\b/i.test(text)) {
+    return { speech: "Let me explain APY.", workflow: buildWorkflow("explain_apy") };
+  }
+  if (/\breflect\b/i.test(text)) {
+    return { speech: "Welcome to Reflect!", workflow: buildWorkflow("onboarding_tour") };
   }
 
-  if (/\bapy\b|\byield\b.*\b(mean|what)|what is (the )?(yield|interest)|\binterest rate\b/.test(text)) {
-    return { speech: "Good question. Let me show you on the USDC+ page.", workflow: buildWorkflow("explain_apy") };
-  }
-
-  if (/\bcompare|difference between|which stablecoin|supported (stable)?coins\b/.test(text)) {
-    const r = await ctx.runTool("reflect_get_stablecoin_overview", {});
-    if (!r.ok) return errorReply(r.data);
-    const parts = (r.data.stablecoins as any[]).map(
-      (c) => `${c.symbol}, backed by ${c.underlying}, earning ${c.apy ? `${c.apy.percent}%` : "an unreported APY"} with 1 token worth $${c.exchangeRate?.usdPerToken ?? "?"}`,
-    );
-    return {
-      speech: `Reflect has ${parts.length} stablecoins live in the API: ${parts.join("; and ")}. Both grow in value against the dollar, so there's nothing to claim.`,
-      point: { target: "nav-stablecoin" },
-    };
-  }
-
-  if (/\b(stats|statistics|how big|how many (users|holders)|tvl|volume)\b/.test(text)) {
-    const r = await ctx.runTool("reflect_get_protocol_stats", {});
-    if (!r.ok) return errorReply(r.data);
-    return {
-      speech: `Reflect has ${fmt(r.data.holders)} holders, ${fmt(r.data.totalSupply)} tokens in supply, and has distributed ${fmt(r.data.totalYieldDistributed)} dollars of yield so far.`,
-      point: { target: "nav-stats" },
-    };
-  }
-
-  if (/\b(new|first time|what can i do|how (does )?reflect work|what (is|does) reflect|show me around|tour|get started|onboard)\b/.test(text)) {
+  if (/\b(new|first time|what can i do|how (does )?titan work|what (is|does) titan|show me around|tour|get started|onboard)\b/i.test(text)) {
     return {
       speech:
-        "Welcome! Reflect turns plain dollars like USDC into stablecoins that earn yield automatically. No staking, no claiming. Let me show you around.",
-      workflow: buildWorkflow("onboarding_tour"),
+        "Welcome! Titan Exchange is Solana's algorithmic DEX aggregator. We route trades across Raydium, Orca, Meteora, and Phoenix with 0% protocol fees on Prime. Let's start with a tour.",
+      workflow: buildWorkflow("titan_tour"),
     };
   }
 

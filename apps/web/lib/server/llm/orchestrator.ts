@@ -1,10 +1,12 @@
 import "server-only";
 import { z } from "zod";
 import { CompanionReplySchema, StepSchema, auditWorkflow, type CompanionReply, type Step } from "@/lib/companion/actions";
-import { ELEMENTS, ELEMENT_IDS, elementsOnPage, getElement, type PageId } from "@/lib/companion/registry";
+import { ELEMENTS, ELEMENT_IDS, PAGES, elementsOnPage, getElement, type PageId } from "@/lib/companion/registry";
 import { WORKFLOW_IDS, buildWorkflow } from "@/lib/companion/workflows";
 import { callTool, listTools } from "../mcp-client";
-import type { ChatMessage, FunctionTool, LlmProvider } from "./provider";
+import type { ChatMessage, ContentPart, FunctionTool, LlmProvider } from "./provider";
+import { UMBRA_KNOWLEDGE } from "@/lib/products/umbra/web";
+import { JUPITER_KNOWLEDGE } from "@/lib/products/jupiter/web";
 import { planWithRules } from "./rules";
 import { getTitanPromptFragment } from "@/lib/products/titan/prompt";
 
@@ -22,19 +24,88 @@ export interface TurnInput {
   history: { role: "user" | "assistant"; content: string }[];
   /** Field values the user typed, so the model can reason about "my amount". Only registered fillable ids. */
   fields: Record<string, string>;
+  /** Live context and data from the active page/view. */
+  pageContext?: Record<string, unknown>;
+  /** The text the user can currently see, read from the DOM (so answers follow the real page). */
+  pageText?: string;
+  /** A JPEG data URL of the user's viewport, for vision models. */
+  screenshot?: string;
+}
+
+const isUmbraWeb = (page: PageId) => page === "umbra_home" || page === "umbra_app";
+const isJupiter = (page: PageId) => page.startsWith("jup_");
+/** Products that answer from knowledge + what they see, with no MCP tool round-trips. */
+const seesAndKnows = (page: PageId) => isUmbraWeb(page) || isJupiter(page);
+
+function jupiterPrompt(input: TurnInput) {
+  return `You are Astro, a curious astronaut cat floating around jup.ag who helps people use Jupiter on Solana.
+Speak warmly and plainly: 1-3 short sentences, no markdown, no URLs, no hype, no price predictions or financial advice.
+You can SEE the user's screen: when a screenshot is attached, look at it and refer to what is actually there (numbers, tokens, buttons, warnings, which tab is open). The visible page text is below too.
+${JUPITER_KNOWLEDGE}
+
+Rules:
+- This demo uses a simulated wallet and fixed demo prices. Never ask for keys or seed phrases. You never click, sign or approve: you point, the user acts.
+- Whenever the user wants to DO something you MUST set workflow_id: jup_swap {amount, inputToken, outputToken} | jup_limit {amount, inputToken, outputToken, price} | jup_perps {side: long|short, amount (USDC collateral), leverage} | jup_portfolio. New users or "show me around": jup_tour. Tokens: SOL, USDC, JUP, USDT, BONK, JitoSOL.
+- To show one thing, set point_target to an element id below. Questions get a spoken answer.
+Page: ${input.page} (${PAGES[input.page].title}). Elements here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
+Other Jupiter pages: ${(["jup_swap", "jup_limit", "jup_perps", "jup_portfolio"] as const).filter((p) => p !== input.page).join(", ")}
+App state: ${JSON.stringify(input.pageContext ?? {})}
+Typed fields: ${JSON.stringify(input.fields)}
+${input.pageText ? `Visible page text:\n"""${input.pageText}"""` : ""}
+Always finish with companion_respond.`;
+}
+
+function umbraWebPrompt(input: TurnInput) {
+  return `You are Milo, a small pixel puppy who lives on the Umbra website (umbraprivacy.com) and guides people through it. Umbra is the privacy layer for your money on Solana.
+Speak warmly and plainly: 1-3 short sentences, no markdown, no URLs, no hype.
+You can SEE the user's screen: when a screenshot is attached, look at it and refer to what is actually there (headings, numbers, buttons, errors, what tab is open). The visible page text is below too.
+${UMBRA_KNOWLEDGE}
+
+Rules:
+- Never say untraceable, 100% private or fully anonymous; deposits and withdrawals are public at the edges.
+- This demo uses a simulated wallet and simulated balances. Never ask for keys or seed phrases. You never click, sign or approve: you point, the user acts.
+- Whenever the user wants to DO something (deposit, send, swap, withdraw, get started), you MUST set workflow_id so you can walk them through it on the page: umbra_web_deposit | umbra_web_send | umbra_web_swap | umbra_web_withdraw, with workflow_params {amount, inputToken, outputToken, recipient}. Tokens: SOL, USDC, USDT, USDv.
+- New users or "how does it work" / "show me around": umbra_web_tour. "What's public/private": umbra_web_privacy.
+- To show one thing, set point_target to an element id from the lists below. Questions get a spoken answer, not a workflow.
+Page: ${input.page} (${PAGES[input.page].title}). Elements here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
+Elsewhere: ${siteMap(input.page)}
+App state: ${JSON.stringify(input.pageContext ?? {})}
+Typed fields: ${JSON.stringify(input.fields)}
+${input.pageText ? `Visible page text:\n"""${input.pageText}"""` : ""}
+Always finish with companion_respond.`;
+}
+
+/** The user turn, with the screenshot attached when the page sent one. */
+function userMessage(input: TurnInput): ChatMessage {
+  if (!input.screenshot) return { role: "user", content: input.utterance };
+  const parts: ContentPart[] = [
+    { type: "text", text: `${input.utterance}\n(Attached: a screenshot of what I'm looking at right now.)` },
+    { type: "image_url", image_url: { url: input.screenshot } },
+  ];
+  return { role: "user", content: parts };
 }
 
 const MAX_TOOL_ROUNDS = 4;
 /** Whole-turn budget. A voice user won't wait longer; past it we answer from the rules planner. */
-const TURN_BUDGET_MS = 20_000;
+const TURN_BUDGET_MS = 45_000;
 /** No wallet is connected in this demo, so building transactions in chat would mislead. */
-const LLM_EXCLUDED_TOOLS = new Set(["reflect_prepare_transaction"]);
+const LLM_EXCLUDED_TOOLS = new Set<string>();
 
 const RespondArgs = z.object({
   speech: z.string().min(1).max(800),
   workflow_id: z.enum(WORKFLOW_IDS).optional(),
   workflow_params: z
-    .object({ amount: z.string().regex(/^\d+(\.\d{1,6})?$/).optional(), tokenName: z.string().max(32).optional(), tokenSymbol: z.string().max(8).optional() })
+    .object({
+      amount: z.string().regex(/^\d+(\.\d{1,6})?$/).optional(),
+      tokenName: z.string().max(32).optional(),
+      tokenSymbol: z.string().max(8).optional(),
+      inputToken: z.string().max(16).optional(),
+      outputToken: z.string().max(16).optional(),
+      recipient: z.string().max(64).optional(),
+      price: z.string().regex(/^\d+(\.\d{1,6})?$/).optional(),
+      side: z.enum(["long", "short"]).optional(),
+      leverage: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+    })
     .optional(),
   custom_steps: z.array(z.unknown()).max(8).optional(),
   point_target: z.string().optional(),
@@ -55,7 +126,17 @@ const RESPOND_TOOL: FunctionTool = {
         workflow_id: { type: "string", enum: [...WORKFLOW_IDS] },
         workflow_params: {
           type: "object",
-          properties: { amount: { type: "string" }, tokenName: { type: "string" }, tokenSymbol: { type: "string" } },
+          properties: {
+            amount: { type: "string", description: "Numerical amount e.g. '2' or '0.5'" },
+            tokenName: { type: "string" },
+            tokenSymbol: { type: "string" },
+            inputToken: { type: "string", description: "Symbol of token to sell e.g. 'SOL'" },
+            outputToken: { type: "string", description: "Symbol of token to buy e.g. 'USDC'" },
+            recipient: { type: "string", description: "Recipient Solana address for a private send" },
+            price: { type: "string", description: "Limit order target price" },
+            side: { type: "string", description: "Perps side: long or short" },
+            leverage: { type: "string", description: "Perps leverage e.g. '5'" },
+          },
         },
         point_target: { type: "string", description: "A registered element id to point at" },
         custom_steps: {
@@ -71,7 +152,28 @@ const RESPOND_TOOL: FunctionTool = {
   },
 };
 
+function formatPageContext(ctx?: Record<string, unknown>): string {
+  if (!ctx || Object.keys(ctx).length === 0) return "";
+  const lines: string[] = ["=== LIVE TITAN WEBPAGE CONTEXT & DATA ==="];
+  if (ctx.product) lines.push(`Product: ${ctx.product} (View: ${ctx.view ?? "default"})`);
+  if (ctx.selectedToken) lines.push(`Active Token: ${ctx.selectedToken} (Price: $${ctx.selectedTokenPrice ?? "N/A"})`);
+  if (ctx.sellToken || ctx.payToken) lines.push(`Current Sell/Pay Asset: ${ctx.sellToken ?? ctx.payToken}`);
+  if (ctx.buyToken || ctx.receiveToken) lines.push(`Current Buy/Receive Asset: ${ctx.buyToken ?? ctx.receiveToken}`);
+  if (ctx.amount || ctx.payAmount) lines.push(`Current Input Amount: ${ctx.amount ?? ctx.payAmount}`);
+  if (ctx.estReceive) lines.push(`Estimated Output: ${ctx.estReceive}`);
+  if (ctx.rate) lines.push(`Exchange Rate: ${ctx.rate}`);
+  if (ctx.balances) lines.push(`User Balances: ${JSON.stringify(ctx.balances)}`);
+  if (ctx.walletConnected !== undefined) lines.push(`Wallet Connected: ${ctx.walletConnected ? `Yes (${ctx.walletAddress ?? "connected"})` : "No (simulated demo balances: 14.50 SOL, 1,250.00 USDC)"}`);
+  if (ctx.availableTokens && Array.isArray(ctx.availableTokens)) {
+    lines.push(`Available Tokens on Titan: ${(ctx.availableTokens as Array<{ symbol: string; price: string }>).map((t) => `${t.symbol} (${t.price})`).join(", ")}`);
+  }
+  lines.push("=========================================");
+  return lines.join("\n");
+}
+
 function systemPrompt(input: TurnInput) {
+  if (isUmbraWeb(input.page)) return umbraWebPrompt(input);
+  if (isJupiter(input.page)) return jupiterPrompt(input);
   if (input.page === "umbra" || /\b(umbra|nimbus|shield|unshield|stealth|private send|private transfer|confidential)\b/i.test(input.utterance)) {
     return `You are Milo, a friendly 3D puppy companion guide for Umbra Privacy (Nimbus Protocol on Solana, Simulated Summit Demo).
 Speak warmly, faithfully and briefly (1-3 sentences, plain words, no markdown or URLs).
@@ -86,16 +188,19 @@ Always finish with companion_respond.`;
   }
 
   // Primary: Titan Exchange
-  return `You are Milo, a small pixel fox guiding users through Titan Exchange (titan.exchange on Solana).
+  const contextBlock = formatPageContext(input.pageContext);
+  return `You are Milo, a friendly 2D pixel husky puppy guiding users through Titan Exchange (titan.exchange on Solana).
 Speak in plain, clear English: 1-3 short sentences, no markdown, no URLs, no hype.
 ${getTitanPromptFragment()}
+${contextBlock ? `\n${contextBlock}\n` : ""}
 Never sign, approve, or submit transactions; you only guide and point at elements, the user remains in complete control and approves in their own wallet.
 If the user is new or asks how Titan works / for a tour, use workflow_id: "titan_tour".
-If user wants to swap, use workflow_id: "titan_swap", with workflow_params: { amount, tokenSymbol }.
+If user wants to swap, use workflow_id: "titan_swap", with workflow_params: { amount, inputToken, outputToken }.
 If user wants a limit order, use workflow_id: "titan_limit".
 Page: ${input.page}. Here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
 Elsewhere: ${siteMap(input.page)}
 Typed fields: ${JSON.stringify(input.fields)}
+${input.pageText ? `Visible page text (and a screenshot when attached):\n"""${input.pageText}"""` : ""}
 Always finish with companion_respond.`;
 }
 
@@ -111,17 +216,31 @@ export function keepOnDocs(input: Pick<TurnInput, "page" | "utterance">, reply: 
   return { ...reply, workflow: undefined, point: { target: "titan-docs-reading-pane" } as CompanionReply["point"] };
 }
 
+/** "Deposit 25", "guide me", "show me around": requests that should end in a walkthrough. */
+const UMBRA_WANTS_GUIDE = /\b(deposit|send|pay|swap|withdraw|buy|sell|long|short|limit order|guide me|walk me|show me (around|how)|tour|i'?m new|get started)\b/i;
+
+/**
+ * On Umbra pages an action request always ends in a walkthrough: if the model only talked, the
+ * deterministic planner supplies the workflow, and the model's own words are kept.
+ */
+async function ensureUmbraGuide(input: TurnInput, reply: CompanionReply): Promise<CompanionReply> {
+  if (!seesAndKnows(input.page) || reply.workflow || !UMBRA_WANTS_GUIDE.test(input.utterance)) return reply;
+  const planned = await planWithRules(input.utterance, { page: input.page, runTool: callTool, pageState: input.pageContext });
+  return planned.workflow ? { ...reply, workflow: planned.workflow, point: undefined } : reply;
+}
+
 export async function runTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {
-  return keepOnDocs(input, await answerTurn(input, provider));
+  return keepOnDocs(input, await ensureUmbraGuide(input, await answerTurn(input, provider)));
 }
 
 async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {
-  if (!provider) return planWithRules(input.utterance, { page: input.page, runTool: callTool });
+  if (!provider) return planWithRules(input.utterance, { page: input.page, runTool: callTool, pageState: input.pageContext });
 
   const toolCalls: CompanionReply["toolCalls"] = [];
   try {
     const isUmbra = input.page === "umbra" || /\b(umbra|nimbus|shield|unshield|stealth|private send|private transfer|confidential)\b/i.test(input.utterance);
-    const { tools: mcpTools } = await listTools(isUmbra ? "umbra" : "titan");
+    // Umbra web answers from the knowledge in its prompt plus what it sees: no tool round-trips.
+    const { tools: mcpTools } = seesAndKnows(input.page) ? { tools: [] } : await listTools(isUmbra ? "umbra" : "titan");
     const fnTools: FunctionTool[] = mcpTools
       .filter((t) => !LLM_EXCLUDED_TOOLS.has(t.name) && toolIsRelevant(t.name, input.utterance))
       .map((t) => ({
@@ -133,7 +252,7 @@ async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promi
     const messages: ChatMessage[] = [
       { role: "system", content: systemPrompt(input) },
       ...input.history.slice(-4),
-      { role: "user", content: input.utterance },
+      userMessage(input),
     ];
 
     const started = Date.now();
@@ -152,7 +271,7 @@ async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promi
       if (!res.toolCalls.length) {
         const prose = res.content?.trim();
         // The model answered in prose instead of calling companion_respond: accept it as speech.
-        if (prose) return finalize({ speech: prose }, toolCalls);
+        if (prose) return finalize({ speech: prose }, toolCalls, input.pageContext);
         if (!nudged) {
           nudged = true;
           continue;
@@ -163,7 +282,7 @@ async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promi
 
       for (const call of res.toolCalls) {
         if (call.function.name === "companion_respond") {
-          return finalize(safeParseArgs(call.function.arguments), toolCalls);
+          return finalize(safeParseArgs(call.function.arguments), toolCalls, input.pageContext);
         }
         if (LLM_EXCLUDED_TOOLS.has(call.function.name)) {
           messages.push({ role: "tool", tool_call_id: call.id, content: '{"ok":false,"error":"not available in this demo"}' });
@@ -183,20 +302,20 @@ async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promi
   } catch (err) {
     // LLM outage → deterministic fallback, so the companion keeps working.
     console.error("[companion] LLM turn failed, using rules:", (err as Error).message);
-    const fallback = await planWithRules(input.utterance, { page: input.page, runTool: callTool });
+    const fallback = await planWithRules(input.utterance, { page: input.page, runTool: callTool, pageState: input.pageContext });
     return { ...fallback, toolCalls: [...toolCalls, ...fallback.toolCalls] };
   }
 }
 
 /** Validate + audit everything the model proposed. Invalid parts are dropped, not trusted. */
-export function finalize(raw: unknown, toolCalls: CompanionReply["toolCalls"]): CompanionReply {
+export function finalize(raw: unknown, toolCalls: CompanionReply["toolCalls"], pageState: Record<string, unknown> = {}): CompanionReply {
   const parsed = RespondArgs.safeParse(raw);
   if (!parsed.success) {
     const speech = typeof (raw as { speech?: unknown })?.speech === "string" ? (raw as { speech: string }).speech : "Sorry, I got muddled. Could you say that again?";
     return CompanionReplySchema.parse({ speech: speakable(speech).slice(0, 800), toolCalls, engine: "llm" });
   }
   const a = { ...parsed.data, speech: speakable(parsed.data.speech) };
-  let workflow = a.workflow_id ? buildWorkflow(a.workflow_id, a.workflow_params ?? {}) : undefined;
+  let workflow = a.workflow_id ? buildWorkflow(a.workflow_id, a.workflow_params ?? {}, pageState) : undefined;
 
   if (!workflow && a.custom_steps?.length) {
     const steps = a.custom_steps

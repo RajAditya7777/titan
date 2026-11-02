@@ -23,6 +23,8 @@ export function LimitOrderCard() {
     setLimitExpiry,
     walletConnected,
     setWalletModalOpen,
+    addOrder,
+    showToast,
   } = useTitan();
 
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -292,11 +294,18 @@ export function LimitOrderCard() {
               if (!walletConnected) {
                 setWalletModalOpen(true);
               } else {
+                addOrder({
+                  pair: limitOrder.pair,
+                  side: limitOrder.side,
+                  price: limitOrder.limitPrice,
+                  amount: limitOrder.quantity,
+                  type: "LIMIT",
+                });
                 setOrderPlaced(true);
               }
             }}
             disabled={walletConnected && !limitOrder.isValid}
-            className="w-full rounded-2xl bg-[#fed766] hover:bg-[#ffe082] py-3.5 text-center text-sm font-extrabold text-black transition-all shadow-[0_0_20px_rgba(254,215,102,0.25)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full rounded-full bg-[#f2d363] hover:bg-[#ffe175] py-3.5 text-center text-sm font-medium text-[#0d0d0c] transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {walletConnected ? `Place Limit Order (${limitOrder.side.toUpperCase()})` : "Connect Wallet"}
           </button>

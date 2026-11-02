@@ -19,6 +19,12 @@ export const TITAN_PAGES = {
     summary:
       "Educational breakdown of DART routing, Argos arbitrage protection, Prime mode, and MEV sandwich protection.",
   },
+  titan_docs: {
+    path: "/titan/docs",
+    title: "Titan Documentation",
+    summary:
+      "Official Titan GitBook documentation clone with Argos algorithm, DART routing, and TypeScript SDK.",
+  },
 } as const;
 
 export type TitanPageId = keyof typeof TITAN_PAGES;

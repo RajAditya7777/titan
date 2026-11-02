@@ -7,6 +7,7 @@ import { TitanTickerBar } from "@/components/titan/TitanTickerBar";
 import { SettingsDrawer } from "@/components/titan/SettingsDrawer";
 import { ReviewSwapModal } from "@/components/titan/ReviewSwapModal";
 import { ConnectWalletModal } from "@/components/titan/ConnectWalletModal";
+import { TitanToast } from "@/components/titan/TitanToast";
 import { HideOn } from "@/components/titan/HideOn";
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 export default function TitanLayout({ children }: { children: React.ReactNode }) {
   return (
     <TitanStateProvider>
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans selection:bg-[#fed766] selection:text-black">
+      <div className="min-h-screen bg-[#0d0d0c] text-white flex flex-col font-sans selection:bg-[#f2d363] selection:text-[#0d0d0c]">
         {/* Top Header */}
         <TitanHeader />
 
@@ -31,14 +32,15 @@ export default function TitanLayout({ children }: { children: React.ReactNode })
         <SettingsDrawer />
         <ReviewSwapModal />
         <ConnectWalletModal />
+        <TitanToast />
 
         {/* Main Content Area */}
-        <main className="flex-1 w-full px-2 sm:px-4 py-4 max-w-[1500px] mx-auto">
+        <main className="flex-1 w-full px-2 sm:px-4 py-3 max-w-[1540px] mx-auto">
           {children}
         </main>
 
         {/* Footer matching Titan Official UI */}
-        <footer className="border-t border-white/[0.06] bg-[#0a0a0a] py-4 px-6 text-xs text-[#737373] select-none">
+        <footer className="border-t border-white/[0.06] bg-[#0d0d0c] py-4 px-6 text-xs text-[#78766d] select-none">
           <div className="max-w-[1500px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             {/* Left Copyright & Help */}
             <div className="flex items-center gap-2">
@@ -53,7 +55,7 @@ export default function TitanLayout({ children }: { children: React.ReactNode })
             </div>
 
             {/* Right Socials */}
-            <div className="flex items-center gap-4 text-[#8a8a8a]">
+            <div className="flex items-center gap-4 text-[#8a8a8a] sm:mr-28">
               {/* Discord Icon */}
               <a
                 href="https://discord.com"

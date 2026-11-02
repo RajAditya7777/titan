@@ -3,6 +3,8 @@ import { validate } from "./registry";
 import { UMBRA_GOALS } from "@/lib/products/umbra/planner";
 import { getUmbraAppState } from "@/lib/products/umbra/state";
 import { planTitanGoal } from "@/lib/products/titan/planner";
+import { planUmbraWeb, type UmbraWebState } from "@/lib/products/umbra/web";
+import { planJupiter, type JupState } from "@/lib/products/jupiter/web";
 
 /**
  * Hand-authored workflows for the core journeys. The LLM picks one of these and fills its
@@ -24,6 +26,17 @@ export const WORKFLOW_IDS = [
   "umbra_private_send",
   "umbra_withdraw",
   "umbra_explain_privacy",
+  "umbra_web_tour",
+  "umbra_web_deposit",
+  "umbra_web_send",
+  "umbra_web_swap",
+  "umbra_web_withdraw",
+  "umbra_web_privacy",
+  "jup_tour",
+  "jup_swap",
+  "jup_limit",
+  "jup_perps",
+  "jup_portfolio",
 ] as const;
 export type WorkflowId = (typeof WORKFLOW_IDS)[number];
 
@@ -31,10 +44,32 @@ export interface WorkflowParams {
   amount?: string;
   tokenName?: string;
   tokenSymbol?: string;
+  inputToken?: string;
+  outputToken?: string;
+  recipient?: string;
+  price?: string;
+  side?: string;
+  leverage?: string;
 }
 
-export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}): Workflow {
+/** `pageState` is the page's own snapshot (D-005); planners use it to skip steps already done. */
+export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}, pageState: Record<string, unknown> = {}): Workflow {
   switch (id) {
+    case "jup_tour":
+    case "jup_swap":
+    case "jup_limit":
+    case "jup_perps":
+    case "jup_portfolio":
+      return { id, ...planJupiter(id.slice(4) as never, { ...params }, pageState as JupState) };
+    case "umbra_web_tour":
+    case "umbra_web_deposit":
+    case "umbra_web_send":
+    case "umbra_web_swap":
+    case "umbra_web_withdraw":
+    case "umbra_web_privacy": {
+      const wf = planUmbraWeb(id.slice("umbra_web_".length) as never, { ...params }, pageState as Partial<UmbraWebState>);
+      return { id, ...wf };
+    }
     case "onboarding_tour":
       return {
         id,
@@ -168,7 +203,8 @@ export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}): Work
     case "titan_swap":
       return planTitanGoal("swap", {
         amount: params.amount,
-        outputToken: params.tokenSymbol,
+        inputToken: params.inputToken,
+        outputToken: params.outputToken ?? (params.tokenSymbol && params.tokenSymbol.toUpperCase() !== "SOL" ? params.tokenSymbol : "USDC"),
       });
 
     case "titan_tour":

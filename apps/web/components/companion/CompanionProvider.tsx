@@ -8,6 +8,7 @@ import { ELEMENTS, PAGES, getElement, pageForPath, validate, type ElementId, typ
 import { BrowserSpeechToText, BrowserTextToSpeech, isLikelyEcho, type SpeechToText, type TextToSpeech } from "@/lib/companion/voice";
 import { createVoiceEngines } from "@/lib/companion/voice-server";
 import { setMicLevel } from "@/lib/companion/mic-level";
+import { ASKS_TO_LOOK, captureViewport, readVisibleText } from "@/lib/companion/look";
 
 const MUTE_KEY = "reflect.voice.muted";
 
@@ -88,6 +89,7 @@ interface CompanionApi {
   };
   registerField(id: ElementId, handle: FieldHandle): () => void;
   notifyFieldChange(id: ElementId): void;
+  setPageContext(ctx: Record<string, unknown> | ((prev: Record<string, unknown>) => Record<string, unknown>)): void;
 }
 
 const Ctx = createContext<CompanionApi | null>(null);
@@ -515,6 +517,18 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
 
   // ── Conversation ──
   const historyRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
+  const pageContextRef = useRef<Record<string, unknown>>({});
+
+  const setPageContext = useCallback(
+    (ctx: Record<string, unknown> | ((prev: Record<string, unknown>) => Record<string, unknown>)) => {
+      if (typeof ctx === "function") {
+        pageContextRef.current = ctx(pageContextRef.current);
+      } else {
+        pageContextRef.current = { ...pageContextRef.current, ...ctx };
+      }
+    },
+    [],
+  );
 
   const send = useCallback(
     async (text: string) => {
@@ -525,10 +539,24 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
       setPetState("thinking");
       setBubble(null);
       try {
+        // The companion looks before it answers: visible text always, a screenshot on Umbra pages
+        // (and elsewhere when the question is about the screen).
+        const looks = pageRef.current.startsWith("umbra_") || pageRef.current.startsWith("jup_") || ASKS_TO_LOOK.test(utterance);
+        const pageText = readVisibleText();
+        const screenshot = looks ? await captureViewport() : null;
+        if (screenshot) addMessage("system", "Looked at your screen");
         const res = await fetch("/api/companion", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ utterance, page: pageRef.current, history: historyRef.current.slice(-8), fields: fieldValues() }),
+          body: JSON.stringify({
+            utterance,
+            page: pageRef.current,
+            history: historyRef.current.slice(-8),
+            fields: fieldValues(),
+            pageContext: pageContextRef.current,
+            pageText,
+            ...(screenshot ? { screenshot } : {}),
+          }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const reply = (await res.json()) as CompanionReply;
@@ -777,11 +805,24 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
       guide: { navigate, highlight, explain, fill, confirmOffer, completeStep, back, repeat, restart, cancel, retry },
       registerField,
       notifyFieldChange,
+      setPageContext,
     }),
-    [page, petState, target, bubble, messages, run, panelOpen, engine, sttSupported, listening, interim, handsFree, muted, micError, engines, toggleMic, setMuted, send, handleUtterance, navigate, highlight, explain, fill, confirmOffer, completeStep, back, repeat, restart, cancel, retry, registerField, notifyFieldChange],
+    [page, petState, target, bubble, messages, run, panelOpen, engine, sttSupported, listening, interim, handsFree, muted, micError, engines, toggleMic, setMuted, send, handleUtterance, navigate, highlight, explain, fill, confirmOffer, completeStep, back, repeat, restart, cancel, retry, registerField, notifyFieldChange, setPageContext],
   );
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
+}
+
+/**
+ * Lets a page or widget register live domain context (e.g. active token pair, balances, quote)
+ * so the companion LLM can reason about real-time page state on every utterance.
+ */
+export function useCompanionContext(data: Record<string, unknown>) {
+  const { setPageContext } = useCompanion();
+  const serialized = JSON.stringify(data);
+  useEffect(() => {
+    setPageContext(JSON.parse(serialized));
+  }, [serialized, setPageContext]);
 }
 
 /**

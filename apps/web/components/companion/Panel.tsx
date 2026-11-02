@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronLeft, ChevronRight, Mic, MicOff, RotateCcw, Send, Square, Volume2, VolumeX, X, Wand2, Cpu, AlertTriangle } from "lucide-react";
-import { PAGES } from "@/lib/companion/registry";
+import { Check, ChevronLeft, ChevronRight, Mic, MicOff, RotateCcw, Send, Square, Volume2, VolumeX, X, Wand2, Cpu, AlertTriangle, ScanEye } from "lucide-react";
+import { PAGES, type PageId } from "@/lib/companion/registry";
+import { UMBRA_WEB_SUGGESTIONS } from "@/lib/products/umbra/web";
+import { JUP_SUGGESTIONS } from "@/lib/products/jupiter/web";
 import { useCompanion } from "./CompanionProvider";
 
 const SUGGESTIONS = [
@@ -16,6 +18,10 @@ const SUGGESTIONS = [
   "How do I protect myself from sandwich attacks?",
   "Help me place a limit order",
 ];
+
+const isUmbraWeb = (page: PageId) => page === "umbra_home" || page === "umbra_app";
+/** The companion wears the product's look: Umbra's white and electric blue, Titan's charcoal and gold. */
+export const themeFor = (page: PageId) => (isUmbraWeb(page) ? "umbra-ui" : page.startsWith("jup_") ? "jup-ui" : "titan-ui");
 
 export function CompanionPanel() {
   const c = useCompanion();
@@ -66,9 +72,10 @@ function FullPanel() {
 
   return (
     <motion.section
-      aria-label="Milo, Titan guide"
+      aria-label={c.page.startsWith("jup_") ? "Astro, Jupiter guide" : isUmbraWeb(c.page) ? "Milo, Umbra guide" : "Milo, Titan guide"}
       data-testid="companion-panel"
-      className="titan-ui fixed bottom-[124px] right-6 z-[55] flex max-h-[min(640px,calc(100vh-150px))] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-[24px] border border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[0_24px_60px_-18px_rgba(0,0,0,0.6)]"
+      data-capture-skip
+      className={`${themeFor(c.page)} fixed bottom-[124px] right-6 z-[55] flex max-h-[min(640px,calc(100vh-150px))] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-[24px] border border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[0_24px_60px_-18px_rgba(0,0,0,0.6)]`}
       initial={{ opacity: 0, y: 24, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 24, scale: 0.96 }}
@@ -77,8 +84,8 @@ function FullPanel() {
       <header className="flex items-center gap-3 border-b border-[var(--line)] px-5 py-4">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[16px]">🐾</span>
-            <p className="text-[15px] font-bold tracking-[-0.01em] text-[var(--text)]">Milo</p>
+            <span className="text-[16px]">{c.page.startsWith("jup_") ? "🚀" : "🐾"}</span>
+            <p className="text-[15px] font-bold tracking-[-0.01em] text-[var(--text)]">{c.page.startsWith("jup_") ? "Astro" : "Milo"}</p>
             <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--accent)] border border-[var(--accent)]/25">
               Guide
             </span>
@@ -115,11 +122,21 @@ function FullPanel() {
       <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto px-5 py-4" data-testid="companion-messages">
         {c.messages.length === 0 && (
           <div className="space-y-4">
-            <p className="text-[14.5px] leading-relaxed text-[var(--text)]">
-              Hi! I&apos;m <strong>Milo</strong>, your <strong>Titan Exchange</strong> guide. Ask about swaps, quotes, routing or limit orders, or tap the mic. I&apos;ll show you the way; every trade stays yours to approve.
-            </p>
+            {c.page.startsWith("jup_") ? (
+              <p className="text-[14.5px] leading-relaxed text-[var(--text)]">
+                Hey, I&apos;m <strong>Astro</strong> 🚀 I float around <strong>Jupiter</strong> and can see this page with you. Ask me anything, or tell me what you want to trade and I&apos;ll show you exactly where to click. You approve everything.
+              </p>
+            ) : isUmbraWeb(c.page) ? (
+              <p className="text-[14.5px] leading-relaxed text-[var(--text)]">
+                Hi! I&apos;m <strong>Milo</strong>. I can see this page with you. Ask me anything about <strong>Umbra</strong>, or tell me what you want to do and I&apos;ll show you exactly where to go. You approve everything.
+              </p>
+            ) : (
+              <p className="text-[14.5px] leading-relaxed text-[var(--text)]">
+                Hi! I&apos;m <strong>Milo</strong>, your <strong>Titan Exchange</strong> guide. Ask about swaps, quotes, routing or limit orders, or tap the mic. I&apos;ll show you the way; every trade stays yours to approve.
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
+              {(c.page.startsWith("jup_") ? JUP_SUGGESTIONS : isUmbraWeb(c.page) ? UMBRA_WEB_SUGGESTIONS : SUGGESTIONS).map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -182,6 +199,15 @@ function FullPanel() {
         }}
       >
         <MicButton />
+        <button
+          type="button"
+          onClick={() => submit("Look at my screen. What am I looking at, and what should I do next?")}
+          title="Let Milo look at your screen"
+          aria-label="Let Milo look at your screen"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--line-strong)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        >
+          <ScanEye size={17} />
+        </button>
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -208,7 +234,8 @@ function GuidanceBar({ run }: { run: NonNullable<ReturnType<typeof useCompanion>
   return (
     <motion.div
       data-testid="guidance-bar"
-      className="titan-ui fixed bottom-5 left-1/2 z-[58] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-3 text-[var(--text)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]"
+      data-capture-skip
+      className={`${themeFor(c.page)} fixed bottom-5 left-1/2 z-[58] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-3 text-[var(--text)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]`}
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 30 }}

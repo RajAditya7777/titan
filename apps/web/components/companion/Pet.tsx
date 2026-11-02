@@ -31,14 +31,14 @@ interface Props {
 }
 
 /** No reaction turns the body around or over: the pet is flat art, and showing its edge breaks the illusion. */
-export const REACTIONS = ["wave", "clap", "wiggle", "giggle", "hop", "hearts", "hi", "cheer"] as const;
+export const REACTIONS = ["wave", "clap", "wiggle", "giggle", "hop", "hearts", "hi", "cheer", "roll"] as const;
 export type Reaction = (typeof REACTIONS)[number];
 
 /** Eyes: 2x2 cells each at these columns, row 6. */
-const EYES = [6, 12].map((c) => c * U);
+const EYES = [4, 11].map((c) => c * U);
 const EYE_Y = 6 * U;
 const EYE = 2 * U;
-const MOUTH_Y = 9 * U;
+const MOUTH_Y = 8 * U;
 const CENTER = { x: 60, y: 60 };
 const FEET_Y = 120;
 
@@ -55,14 +55,15 @@ function Cells({ rows, col0, row0 }: { rows: string[]; col0?: number; row0?: num
 
 /** Squash-and-stretch keyframes: the classic animation principle that makes a body feel soft. */
 const REACTION_ANIM: Record<Reaction, TargetAndTransition> = {
-  wave: { rotate: [0, -4, 4, -4, 0], y: -3, transition: { duration: 1.1 } },
+  wave: { rotate: [0, -3, 3, -3, 0], y: -3, transition: { duration: 1.1 } },
   clap: { y: [0, -3, 0, -3, 0], transition: { duration: 0.8 } },
-  wiggle: { rotate: [0, -10, 9, -7, 5, 0], transition: { duration: 0.9 } },
+  wiggle: { rotate: [0, -8, 7, -6, 4, 0], transition: { duration: 0.9 } },
   giggle: { y: [0, -3, 0, -3, 0, -3, 0], transition: { duration: 0.9 } },
-  hop: { y: [0, 4, -24, 0, -6, 0], scaleY: [1, 0.85, 1.1, 0.9, 1.03, 1], transition: { duration: 1 } },
+  hop: { y: [0, 4, -14, 0, -4, 0], scaleY: [1, 0.92, 1.05, 0.95, 1], transition: { duration: 0.8 } },
   hearts: { scale: [1, 1.08, 1], y: -4, transition: { duration: 0.6 } },
-  hi: { y: [0, -6, 0], transition: { duration: 0.6, ease: "easeOut" } },
-  cheer: { y: [0, 4, -16, 0, -6, 0], scaleY: [1, 0.88, 1.08, 0.92, 1.02, 1], transition: { duration: 0.9 } },
+  hi: { rotate: [0, 5, -4, 5, 0], y: [0, -4, 0], transition: { duration: 0.8, ease: "easeInOut" } },
+  cheer: { y: [0, 3, -12, 0, -4, 0], scaleY: [1, 0.92, 1.05, 0.95, 1], transition: { duration: 0.8 } },
+  roll: { rotate: [0, -28, 28, -20, 20, 0], y: [0, 6, 8, 4, 0], scaleX: [1, 1.06, 0.96, 1], transition: { duration: 1.2, ease: "easeInOut" } },
 };
 
 /**
@@ -72,27 +73,25 @@ const REACTION_ANIM: Record<Reaction, TargetAndTransition> = {
 const REST = { x: 0, y: 0, rotate: 0, scale: 1, scaleX: 1, scaleY: 1 };
 
 /**
- * Paw gestures as rotations about the shoulder: 0 hangs down, positive swings the paw toward the
- * pet's right (viewer's left)... in SVG terms: left paw +rotation goes outward/up, right paw −rotation does.
- * [left, right] keyframes per gesture.
+ * Paw gestures: natural dog movements. Paws stay grounded or gently lift (max 35°),
+ * NEVER flipping upside down into the sky.
  */
 type Gesture = { left: TargetAndTransition; right: TargetAndTransition };
 const still = { rotate: 0, transition: { type: "spring", stiffness: 260, damping: 16 } } as const;
-const loop = (duration: number, repeat = Infinity) => ({ duration, repeat, ease: "easeInOut" as const });
+const loop = (duration: number, repeat = Infinity) => ({ type: "tween" as const, duration, repeat, ease: "easeInOut" as const });
 const GESTURES: Partial<Record<Reaction | "celebrating" | "moving" | "speaking", Gesture>> = {
-  wave: { left: still, right: { rotate: [-150, -175, -150], transition: loop(0.35, 3) } },
-  hi: { left: still, right: { rotate: [-150, -175, -150], transition: loop(0.35, 3) } },
-  clap: { left: { rotate: [0, -38, -10, -38, -10, -38, 0], transition: loop(0.9, 0) }, right: { rotate: [0, 38, 10, 38, 10, 38, 0], transition: loop(0.9, 0) } },
-  hearts: { left: { rotate: -35 }, right: { rotate: 35 } },
-  cheer: { left: { rotate: [160, 140, 160], transition: loop(0.3, 3) }, right: { rotate: [-160, -140, -160], transition: loop(0.3, 3) } },
-  hop: { left: { rotate: 150 }, right: { rotate: -150 } },
-  // Confused: scratches its head.
-  wiggle: { left: still, right: { rotate: [-160, -150, -160], transition: loop(0.25, 4) } },
-  // Paws to the mouth.
-  giggle: { left: { rotate: [-25, -15, -25], transition: loop(0.3, 3) }, right: { rotate: [25, 15, 25], transition: loop(0.3, 3) } },
-  celebrating: { left: { rotate: [160, 135, 160], transition: loop(0.35) }, right: { rotate: [-160, -135, -160], transition: loop(0.35) } },
-  moving: { left: { rotate: [14, -14, 14], transition: loop(0.64) }, right: { rotate: [-14, 14, -14], transition: loop(0.64) } },
-  speaking: { left: still, right: { rotate: [-20, -45, -20], transition: loop(1.1) } },
+  wave: { left: still, right: { rotate: [-18, -35, -18], transition: loop(0.35, 3) } },
+  hi: { left: still, right: { rotate: [-15, -30, -15], transition: loop(0.35, 3) } },
+  clap: { left: { rotate: [0, -18, 5, -18, 5, -18, 0], transition: loop(0.9, 0) }, right: { rotate: [0, 18, -5, 18, -5, 18, 0], transition: loop(0.9, 0) } },
+  hearts: { left: { rotate: -15 }, right: { rotate: 15 } },
+  cheer: { left: { rotate: [-15, 0, -15], transition: loop(0.3, 3) }, right: { rotate: [15, 0, 15], transition: loop(0.3, 3) } },
+  hop: { left: { rotate: -10 }, right: { rotate: 10 } },
+  wiggle: { left: { rotate: [-10, 10, -10], transition: loop(0.25, 4) }, right: { rotate: [10, -10, 10], transition: loop(0.25, 4) } },
+  giggle: { left: { rotate: [-8, 0, -8], transition: loop(0.3, 3) }, right: { rotate: [8, 0, 8], transition: loop(0.3, 3) } },
+  roll: { left: { rotate: [-20, 20, -20], transition: loop(0.4, 2) }, right: { rotate: [20, -20, 20], transition: loop(0.4, 2) } },
+  celebrating: { left: { rotate: [-16, 0, -16], transition: loop(0.35) }, right: { rotate: [16, 0, 16], transition: loop(0.35) } },
+  moving: { left: { rotate: [12, -12, 12], transition: loop(0.64) }, right: { rotate: [-12, 12, -12], transition: loop(0.64) } },
+  speaking: { left: still, right: { rotate: [-10, -22, -10], transition: loop(1.1) } },
 };
 
 const SLEEP_ANIM: TargetAndTransition = { scaleY: [1, 0.95, 1], transition: { duration: 3.6, repeat: Infinity, ease: "easeInOut" } };
@@ -121,14 +120,14 @@ const HEAD_TILT: Partial<Record<Props["state"], TargetAndTransition>> = {
 
 /** Tail wag speed carries mood: slow at rest, fast when happy, still when asleep. */
 function tailWag(state: Props["state"], asleep: boolean, happy: boolean): TargetAndTransition {
-  if (asleep) return { rotate: -8 };
+  if (asleep) return { rotate: -8, transition: { type: "tween", duration: 0.2 } };
   const fast = happy || state === "celebrating" || state === "hover";
   const swing = fast ? 22 : state === "error" ? 0 : 12;
-  return { rotate: [-swing, swing, -swing], transition: { duration: fast ? 0.35 : 1.6, repeat: Infinity, ease: "easeInOut" } };
+  return { rotate: [-swing, swing, -swing], transition: { type: "tween", duration: fast ? 0.35 : 1.6, repeat: Infinity, ease: "easeInOut" } };
 }
 
 /** Legs step in turn while walking across the page; otherwise they stand still. */
-const LEG_STEP: TargetAndTransition = { y: [0, -U / 2, 0], transition: { duration: 0.32, repeat: Infinity } };
+const LEG_STEP: TargetAndTransition = { y: [0, -U / 2, 0], transition: { type: "tween", duration: 0.32, repeat: Infinity, ease: "easeInOut" } };
 
 export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleeping = false, voiceLevel = 0, size = 88, heading = 1 }: Props) {
   const reduce = useReducedMotion();
@@ -139,7 +138,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
   const eyeDy = rad == null ? 0 : Math.round(Math.sin(rad) * 2);
   const pointing = (state === "pointing" || state === "waiting" || state === "speaking") && lookAngle != null;
   const asleep = sleeping && state === "idle" && !reaction;
-  const happy = reaction === "giggle" || reaction === "hearts" || reaction === "wave";
+  const happy = reaction === "giggle" || reaction === "hearts" || reaction === "wave" || reaction === "roll";
   const eyeMood = asleep ? "sleep" : happy ? "hover" : state;
   const body = useMemo<TargetAndTransition>(
     () =>
@@ -264,7 +263,7 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
           <motion.g
             key={col}
             animate={state === "moving" && !reduce ? LEG_STEP : { y: 0 }}
-            transition={state === "moving" ? { delay: i % 2 ? 0.16 : 0 } : { type: "spring", stiffness: 260, damping: 16 }}
+            transition={state === "moving" ? { type: "tween", delay: i % 2 ? 0.16 : 0, duration: 0.32, ease: "easeInOut" } : { type: "spring", stiffness: 260, damping: 16 }}
           >
             <Cells rows={rows} col0={col} row0={LEG_TOP} />
           </motion.g>
@@ -278,8 +277,8 @@ export function Pet({ state, lookAngle, gazeAngle = null, reaction = null, sleep
         >
           <Cells rows={SPRITE.slice(0, 12)} />
           {/* blush: always faint, stronger when happy */}
-          {[3 * U, 15 * U].map((x) => (
-            <rect key={x} x={x} y={8 * U + 2} width={U + 3} height={4} fill="var(--pet-pink)" opacity={happy || state === "celebrating" || state === "hover" ? 0.95 : 0.45} />
+          {[2 * U, 14 * U].map((x) => (
+            <rect key={x} x={x} y={7 * U + 3} width={2 * U} height={4} fill="var(--pet-pink)" opacity={happy || state === "celebrating" || state === "hover" ? 0.95 : 0.45} />
           ))}
           <Eyes mood={eyeMood} dx={eyeDx} dy={eyeDy} />
           <Mouth state={asleep ? "sleep" : state} />
@@ -453,34 +452,48 @@ function Eyes({ mood, dx, dy }: { mood: Props["state"] | "sleep"; dx: number; dy
   );
 }
 
-/** A small pixel smile at rest; an animated mouth while talking; a happy open mouth when celebrating. */
+/** A solid pixel puppy nose and smile; animated mouth while talking; happy open mouth with tongue when celebrating. */
 function Mouth({ state }: { state: Props["state"] | "sleep" }) {
   if (state === "speaking") {
     return (
-      <motion.rect
-        x={55}
-        y={MOUTH_Y + 2}
-        width={10}
-        fill="var(--pet-outline)"
-        animate={{ height: [2, 6, 3, 7, 2] }}
-        transition={{ duration: 0.55, repeat: Infinity }}
-      />
+      <g>
+        <rect x={48} y={48} width={12} height={7} fill="var(--pet-outline)" />
+        <motion.rect
+          x={49}
+          y={56}
+          width={10}
+          fill="var(--pet-outline)"
+          animate={{ height: [2, 6, 3, 7, 2] }}
+          transition={{ duration: 0.55, repeat: Infinity }}
+        />
+      </g>
     );
   }
   if (state === "celebrating") {
     return (
       <g>
-        <rect x={53} y={MOUTH_Y + 1} width={14} height={7} fill="var(--pet-outline)" />
-        <rect x={56} y={MOUTH_Y + 5} width={8} height={3} fill="var(--pet-pink)" />
+        <rect x={48} y={48} width={12} height={7} fill="var(--pet-outline)" />
+        <rect x={46} y={56} width={16} height={6} fill="var(--pet-outline)" />
+        <rect x={50} y={58} width={8} height={4} fill="var(--pet-pink)" />
       </g>
     );
   }
-  if (state === "sleep") return <rect x={57} y={MOUTH_Y + 3} width={6} height={2} fill="var(--pet-outline)" />;
+  if (state === "sleep") {
+    return (
+      <g>
+        <rect x={48} y={48} width={12} height={7} fill="var(--pet-outline)" />
+        <rect x={51} y={57} width={6} height={2} fill="var(--pet-outline)" />
+      </g>
+    );
+  }
   return (
     <g fill="var(--pet-outline)">
-      <rect x={51} y={MOUTH_Y + 1} width={3} height={3} />
-      <rect x={54} y={MOUTH_Y + 4} width={12} height={3} />
-      <rect x={66} y={MOUTH_Y + 1} width={3} height={3} />
+      {/* 2x2 solid nose */}
+      <rect x={48} y={48} width={12} height={7} />
+      {/* cute puppy smile */}
+      <rect x={45} y={56} width={3} height={3} />
+      <rect x={48} y={58} width={12} height={3} />
+      <rect x={60} y={56} width={3} height={3} />
     </g>
   );
 }

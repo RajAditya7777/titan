@@ -16,6 +16,31 @@ import type {
 import { DEFAULT_INPUT_TOKEN, DEFAULT_OUTPUT_TOKEN, TOKEN_SOL, TOKEN_USDC, TITAN_TOKENS } from "./tokens";
 import { generateTitanQuote } from "./mock-quotes";
 
+export interface PlacedOrder {
+  id: string;
+  pair: string;
+  side: "buy" | "sell";
+  price: string;
+  amount: string;
+  time: string;
+  type: string;
+}
+
+export interface TradeHistoryItem {
+  id: string;
+  inToken: string;
+  outToken: string;
+  inAmount: string;
+  outAmount: string;
+  time: string;
+  txHash: string;
+}
+
+export interface ToastNotification {
+  message: string;
+  type: "success" | "info" | "error";
+}
+
 export interface TitanContextValue extends TitanAppState {
   setPage: (page: "swap" | "limit" | "learn") => void;
   setMode: (mode: "instant" | "limit" | "dca" | "slice") => void;
@@ -47,6 +72,20 @@ export interface TitanContextValue extends TitanAppState {
   setLimitPrice: (price: string) => void;
   setLimitQuantity: (quantity: string) => void;
   setLimitExpiry: (expiry: LimitExpiry) => void;
+  // Interactive features
+  toast: ToastNotification | null;
+  showToast: (message: string, type?: "success" | "info" | "error") => void;
+  watchlist: string[];
+  toggleWatchlist: (symbol: string) => void;
+  isWatchlisted: (symbol: string) => boolean;
+  orders: PlacedOrder[];
+  addOrder: (order: Omit<PlacedOrder, "id" | "time">) => void;
+  cancelOrder: (id: string) => void;
+  tradeHistory: TradeHistoryItem[];
+  addTradeToHistory: (trade: { inToken: string; outToken: string; inAmount: string; outAmount: string }) => void;
+  userBalances: Record<string, number>;
+  getUserBalance: (symbol: string) => number;
+  selectTokenBySymbol: (symbol: string) => void;
 }
 
 const TitanContext = createContext<TitanContextValue | null>(null);
@@ -75,6 +114,88 @@ export function TitanStateProvider({ children }: { children: React.ReactNode }) 
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [quoteTimestamp, setQuoteTimestamp] = useState(Date.now());
 
+  // Toast feedback
+  const [toast, setToast] = useState<ToastNotification | null>(null);
+  const showToast = useCallback((message: string, type: "success" | "info" | "error" = "info") => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((cur) => (cur?.message === message ? null : cur));
+    }, 3200);
+  }, []);
+
+  // Watchlist tokens
+  const [watchlist, setWatchlist] = useState<string[]>(["SOL", "HYPE", "PUMP", "cbBTC"]);
+  const toggleWatchlist = useCallback((symbol: string) => {
+    setWatchlist((prev) => {
+      const exists = prev.includes(symbol);
+      const next = exists ? prev.filter((s) => s !== symbol) : [...prev, symbol];
+      showToast(exists ? `Removed ${symbol} from watchlist` : `Added ${symbol} to watchlist`, "info");
+      return next;
+    });
+  }, [showToast]);
+
+  const isWatchlisted = useCallback((symbol: string) => watchlist.includes(symbol), [watchlist]);
+
+  // Orders
+  const [orders, setOrders] = useState<PlacedOrder[]>([
+    { id: "ord-8831", pair: "SOL/USDC", side: "buy", price: "91.50", amount: "2.5", time: "10 mins ago", type: "LIMIT" },
+    { id: "ord-4920", pair: "HYPE/USDC", side: "sell", price: "92.00", amount: "10", time: "42 mins ago", type: "CONDITIONAL" },
+  ]);
+
+  const addOrder = useCallback((order: Omit<PlacedOrder, "id" | "time">) => {
+    const newOrd: PlacedOrder = {
+      ...order,
+      id: `ord-${Math.floor(1000 + Math.random() * 9000)}`,
+      time: "Just now",
+    };
+    setOrders((prev) => [newOrd, ...prev]);
+    showToast(`Order placed: ${order.side.toUpperCase()} ${order.amount} ${order.pair} at $${order.price}`, "success");
+  }, [showToast]);
+
+  const cancelOrder = useCallback((id: string) => {
+    setOrders((prev) => prev.filter((o) => o.id !== id));
+    showToast(`Order ${id} cancelled`, "info");
+  }, [showToast]);
+
+  // Trade History
+  const [tradeHistory, setTradeHistory] = useState<TradeHistoryItem[]>([
+    { id: "tx-9941", inToken: "USDC", outToken: "SOL", inAmount: "500.00", outAmount: "5.332", time: "25 mins ago", txHash: "4xZ9...jK7q" },
+    { id: "tx-8812", inToken: "SOL", outToken: "USDC", inAmount: "2.00", outAmount: "187.52", time: "2 hrs ago", txHash: "7mK1...p9Lw" },
+  ]);
+
+  const addTradeToHistory = useCallback((trade: { inToken: string; outToken: string; inAmount: string; outAmount: string }) => {
+    const newItem: TradeHistoryItem = {
+      id: `tx-${Math.floor(1000 + Math.random() * 9000)}`,
+      ...trade,
+      time: "Just now",
+      txHash: `${Math.random().toString(36).substring(2, 6)}...${Math.random().toString(36).substring(2, 6)}`,
+    };
+    setTradeHistory((prev) => [newItem, ...prev]);
+    showToast(`Swap complete: ${trade.inAmount} ${trade.inToken} → ${trade.outAmount} ${trade.outToken}`, "success");
+  }, [showToast]);
+
+  // User simulated balances
+  const [userBalances, setUserBalances] = useState<Record<string, number>>({
+    SOL: 12.50,
+    USDC: 2500.00,
+    HYPE: 45.00,
+    PUMP: 100000.00,
+    JUP: 350.00,
+  });
+
+  const getUserBalance = useCallback((symbol: string) => {
+    return userBalances[symbol] ?? 0;
+  }, [userBalances]);
+
+  // Select token anywhere
+  const selectTokenBySymbol = useCallback((symbol: string) => {
+    const found = Object.values(TITAN_TOKENS).find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
+    if (found) {
+      setOutputToken(found);
+      showToast(`Selected ${found.symbol} (${found.name})`, "info");
+    }
+  }, [showToast]);
+
   // Wallet connection state
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("So11111111111111111111111111111111111111112");
@@ -86,16 +207,18 @@ export function TitanStateProvider({ children }: { children: React.ReactNode }) 
     setWalletAddress("So11...1112");
     setWalletConnected(true);
     setWalletModalOpen(false);
-  }, []);
+    showToast(`Wallet connected via ${name}`, "success");
+  }, [showToast]);
 
   const disconnectWallet = useCallback(() => {
     setWalletConnected(false);
-  }, []);
+    showToast("Wallet disconnected", "info");
+  }, [showToast]);
 
   // Limit order state
   const [limitPair, setLimitPair] = useState("SOL/USDC");
   const [limitSide, setLimitSide] = useState<LimitSide>("buy");
-  const [limitPrice, setLimitPrice] = useState<string>("184.20");
+  const [limitPrice, setLimitPrice] = useState<string>("93.75");
   const [limitQuantity, setLimitQuantity] = useState<string>("1");
   const [limitExpiry, setLimitExpiry] = useState<LimitExpiry>("1d");
 
@@ -122,11 +245,13 @@ export function TitanStateProvider({ children }: { children: React.ReactNode }) 
 
   const refreshQuote = useCallback(() => {
     setIsLoadingQuote(true);
+    showToast("Fetching freshest Argos & DART route...", "info");
     setTimeout(() => {
       setQuoteTimestamp(Date.now());
       setIsLoadingQuote(false);
-    }, 250);
-  }, []);
+      showToast("Quote updated across 14 DEX pools", "success");
+    }, 350);
+  }, [showToast]);
 
   const switchTokens = useCallback(() => {
     const prevInput = inputToken;
@@ -136,7 +261,8 @@ export function TitanStateProvider({ children }: { children: React.ReactNode }) 
     if (quote?.outAmount) {
       setAmount(quote.outAmount);
     }
-  }, [inputToken, outputToken, quote]);
+    showToast(`Switched pair: ${prevOutput.symbol} → ${prevInput.symbol}`, "info");
+  }, [inputToken, outputToken, quote, showToast]);
 
   // Limit order validation
   const limitOrder: LimitOrderState = useMemo(() => {
@@ -224,6 +350,19 @@ export function TitanStateProvider({ children }: { children: React.ReactNode }) 
     setLimitPrice,
     setLimitQuantity,
     setLimitExpiry,
+    toast,
+    showToast,
+    watchlist,
+    toggleWatchlist,
+    isWatchlisted,
+    orders,
+    addOrder,
+    cancelOrder,
+    tradeHistory,
+    addTradeToHistory,
+    userBalances,
+    getUserBalance,
+    selectTokenBySymbol,
   };
 
   return React.createElement(TitanContext.Provider, { value }, children);

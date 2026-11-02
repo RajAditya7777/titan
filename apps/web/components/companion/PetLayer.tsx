@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { homePosition, placePet, type Placement, type Rect } from "@/lib/companion/positioning";
 import { Pet, REACTIONS, type Reaction } from "./Pet";
 import { useMicLevel } from "@/lib/companion/mic-level";
 import { useCompanion } from "./CompanionProvider";
+import { themeFor } from "./Panel";
+import { AstroCat } from "./AstroCat";
 import { respondTo, type PageEvent } from "@/lib/companion/page-reactions";
 
 const PET = { width: 88, height: 88 };
@@ -18,7 +21,9 @@ const WALK_PX_PER_SEC = 340;
  * the user can always click the highlighted control.
  */
 export function PetLayer() {
-  const { petState, target, bubble, panelOpen, setPanelOpen, run, voice } = useCompanion();
+  const pathname = usePathname();
+  if (pathname === "/titan/demo") return null;
+  const { page, petState, target, bubble, panelOpen, setPanelOpen, run, voice } = useCompanion();
   const [viewport, setViewport] = useState({ width: 1280, height: 800 });
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
   const [hover, setHover] = useState(false);
@@ -162,7 +167,7 @@ export function PetLayer() {
     const on = (kind: PageEvent["kind"]) => (ev: Event) => {
       const el = (ev.target as Element | null)?.closest?.<HTMLElement>("[data-companion]");
       const id = el?.dataset.companion;
-      if (!el || !id?.startsWith("titan-")) return;
+      if (!el || !(id?.startsWith("titan-") || id?.startsWith("umb-"))) return;
       const input = el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el : el.querySelector("input");
       const e: PageEvent = { id, kind, value: input?.value };
       // Typing is debounced so the pet reacts to the number, not to every keystroke.
@@ -249,9 +254,9 @@ export function PetLayer() {
   const travelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const dist = Math.hypot(pos.x - prevPos.current.x, pos.y - prevPos.current.y);
   const walkSecs = Math.min(2.4, Math.max(0.5, dist / WALK_PX_PER_SEC));
-  const walkTransition = useRef<object>({ type: "spring", stiffness: 300, damping: 30 });
-  if (dist >= 24) walkTransition.current = { duration: walkSecs, ease: [0.45, 0, 0.55, 1] };
-  else if (dist > 0) walkTransition.current = { type: "spring", stiffness: 300, damping: 30 }; // small nudges (scroll tracking)
+  const walkTransition = useRef<object>({ type: "tween", duration: 0.3, ease: "easeOut" });
+  if (dist >= 24) walkTransition.current = { type: "tween", duration: walkSecs, ease: [0.45, 0, 0.55, 1] };
+  else if (dist > 0) walkTransition.current = { type: "tween", duration: 0.25, ease: "easeOut" }; // small nudges (scroll tracking)
   useEffect(() => {
     const dx = pos.x - prevPos.current.x;
     const d = Math.hypot(dx, pos.y - prevPos.current.y);
@@ -286,7 +291,7 @@ export function PetLayer() {
   const bubbleShift = beside ? "-50%" : bubbleAbove ? "-100%" : "0%";
 
   return (
-    <div className="titan-ui pointer-events-none fixed inset-0 z-[60]" aria-live="polite">
+    <div className={`${themeFor(page)} pointer-events-none fixed inset-0 z-[60]`} aria-live="polite" data-capture-skip>
       {/* Spotlight */}
       <AnimatePresence>
         {targetRect && (
@@ -403,6 +408,18 @@ export function PetLayer() {
         onClick={() => setPanelOpen(!panelOpen)}
       >
         <div>
+          {page.startsWith("jup_") ? (
+            <AstroCat
+              state={shownState}
+              lookAngle={placement?.angle ?? null}
+              gazeAngle={travelling ? (heading > 0 ? 0 : 180) : petState === "idle" ? gaze : null}
+              heading={heading}
+              reaction={reaction}
+              sleeping={sleeping}
+              voiceLevel={voice.listening ? micLevel : 0}
+              size={PET.width}
+            />
+          ) : (
           <Pet
             state={shownState}
             lookAngle={placement?.angle ?? null}
@@ -413,6 +430,7 @@ export function PetLayer() {
             voiceLevel={voice.listening ? micLevel : 0}
             size={PET.width}
           />
+          )}
         </div>
         {/* attention dot when idle & closed: there is help available */}
         {!panelOpen && petState === "idle" && !voice.listening && (

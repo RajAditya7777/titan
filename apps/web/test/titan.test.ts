@@ -81,4 +81,10 @@ describe("Titan Voice & Fast Rules", () => {
     expect(match?.speech).toContain("zero-fee execution tier");
     expect(match?.pointTarget).toBe("titan-prime-toggle");
   });
+
+  it("registers titan_docs in registry and contains documentation sections", () => {
+    expect(TITAN_PAGES.titan_swap).toBeDefined();
+    expect(TITAN_PAGES.titan_docs).toBeDefined();
+    expect(TITAN_PAGES.titan_docs.path).toBe("/titan/docs");
+  });
 });
