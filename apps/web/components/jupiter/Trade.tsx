@@ -7,6 +7,7 @@ import { ArrowUpDown, Check, ChevronDown, Copy, ExternalLink, Info, Zap } from "
 import { useCompanion, useGuidedField } from "@/components/companion/CompanionProvider";
 import { JUP_TOKENS, JUP_TOKEN_IDS, quote, type JupToken } from "@/lib/products/jupiter/web";
 import { setJup, swapProblem, useJup, type JupStore } from "./store";
+import { petReact } from "@/lib/companion/page-reactions";
 
 const fmt = (n: number, d = 4) => n.toLocaleString("en-US", { maximumFractionDigits: d });
 
@@ -90,6 +91,11 @@ function useTradeFields(s: JupStore, page: "swap" | "limit") {
       problem: swapProblem(s),
     }));
   }, [s, page, setPageContext]);
+  // Running short is worth a reaction, once per new shortfall (not on every keystroke).
+  const problem = s.connected ? swapProblem(s) : null;
+  useEffect(() => {
+    if (problem?.startsWith("Insufficient")) petReact("wiggle", `Not enough ${s.sellToken} 😿 try a smaller amount`);
+  }, [problem]); // eslint-disable-line react-hooks/exhaustive-deps
   return { amount, sell };
 }
 

@@ -9,6 +9,7 @@ import {
   PieChart, Rocket, Search, Send, Settings, Smartphone, Sparkles, Wallet, X, Zap, Layers, ArrowDownToLine,
 } from "lucide-react";
 import { JUP_TOKENS, quote } from "@/lib/products/jupiter/web";
+import { PACKS } from "@/lib/products/jupiter/gacha";
 import { confirmJup, setJup, useJup, type JupStore } from "./store";
 
 /** Jupiter's planet mark (drawn here, not copied). */
@@ -36,7 +37,7 @@ const NAV: { group: string; items: { label: string; href: string; icon: typeof Z
       { label: "Stocks", href: "/jup", icon: BarChart3, badge: "New" },
       { label: "Perps", href: "/jup/perps", icon: LineChart },
       { label: "Predict", href: "/jup", icon: Sparkles },
-      { label: "Gacha", href: "/jup", icon: Dices },
+      { label: "Gacha", href: "/jup/gacha", icon: Dices },
       { label: "Bridge Agg", href: "/jup", icon: Layers, badge: "Beta" },
     ],
   },
@@ -65,7 +66,7 @@ export function JupShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const s = useJup();
   const expanded = pathname === "/jup";
-  const activeHref = pathname.startsWith("/jup/perps") ? "/jup/perps" : pathname.startsWith("/jup/portfolio") ? "/jup/portfolio" : "/jup";
+  const activeHref = ["/jup/perps", "/jup/portfolio", "/jup/gacha"].find((h) => pathname.startsWith(h)) ?? "/jup";
 
   return (
     <div className="flex min-h-screen bg-[#090d10] font-sans text-[#e8f0f2] [color-scheme:dark]">
@@ -229,6 +230,9 @@ function ReviewRows({ s }: { s: JupStore }) {
     rows.push(["Sell", `${s.amount} ${s.sellToken}`], ["Receive (est.)", `${q.out.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${s.buyToken}`], ["Route", q.route], ["Network fee", "0.000005 SOL"]);
   } else if (s.review === "limit") {
     rows.push(["Sell", `${s.amount} ${s.sellToken}`], ["Target price", `${s.limitPrice}`], ["Expires", s.expiry]);
+  } else if (s.review === "gacha") {
+    const pack = PACKS.find((p) => p.id === s.gachaPack)!;
+    rows.push(["Pack", `${pack.name} × ${s.gachaCount}`], ["Pay", `${(pack.price * Number(s.gachaCount)).toLocaleString("en-US")} USDC`], ["Expected value", `${(pack.expectedValue * Number(s.gachaCount)).toLocaleString("en-US")} USDC`], ["Turbo", s.turbo ? "On: Commons auto-sold at 93%" : "Off"]);
   } else {
     rows.push(["Side", `${s.perpSide === "long" ? "Long" : "Short"} ${s.perpMarket}`], ["Collateral", `${s.perpAmount} USDC`], ["Leverage", `${s.leverage}x`]);
   }

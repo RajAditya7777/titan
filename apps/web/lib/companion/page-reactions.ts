@@ -19,7 +19,7 @@ export interface PetResponse {
   visit: boolean;
 }
 
-const AMOUNT_IDS = new Set(["titan-sell-amount-input", "titan-limit-quantity-input", "titan-limit-price-input", "umb-amount"]);
+const AMOUNT_IDS = new Set(["titan-sell-amount-input", "titan-limit-quantity-input", "titan-limit-price-input", "umb-amount", "jup-sell-amount", "jup-perps-amount", "jup-limit-price"]);
 
 export function parseAmount(value: string): number | null {
   const n = Number(value.replace(/,/g, "").trim());
@@ -48,8 +48,48 @@ export function respondTo(e: PageEvent): PetResponse | null {
       ? { reaction: "wiggle", quip: `${fmt(n)}% is high slippage`, visit: true }
       : { reaction: "giggle", quip: `${fmt(n)}% slippage`, visit: true };
   }
+  if (e.id === "jup-perps-leverage") {
+    if (!typed) return null;
+    const n = parseAmount(e.value ?? "");
+    if (n == null) return null;
+    if (n <= 5) return { reaction: "giggle", quip: `${fmt(n)}x, nice and steady`, visit: true };
+    if (n <= 25) return { reaction: "hop", quip: `${fmt(n)}x, getting spicy 🌶️`, visit: true };
+    if (n <= 100) return { reaction: "wiggle", quip: `${fmt(n)}x?! Careful now`, visit: true };
+    return { reaction: "wiggle", quip: `${fmt(n)}x 😱 liquidation is close!`, visit: true };
+  }
   if (e.kind !== "click") return null;
   switch (e.id) {
+    case "jup-connect":
+      return { reaction: "wave", quip: "Let's get you connected!", visit: false };
+    case "jup-wallet-connect":
+      return { reaction: "hearts", quip: "Wallet connected 🚀", visit: true };
+    case "jup-flip":
+      return { reaction: "roll", quip: "Wheee, flip!", visit: true };
+    case "jup-sell-token":
+    case "jup-buy-token":
+      return { reaction: "giggle", quip: "Ooh, which one?", visit: true };
+    case "jup-ultra":
+      return { reaction: "clap", quip: "Ultra handles the hard stuff", visit: true };
+    case "jup-quote":
+      return { reaction: "hi", quip: "Best route, found it!", visit: true };
+    case "jup-swap-submit":
+      return { reaction: "cheer", quip: "Swap time! 🎉", visit: true };
+    case "jup-limit-submit":
+      return { reaction: "hi", quip: "Set it and forget it", visit: true };
+    case "jup-perps-submit":
+      return { reaction: "hearts", quip: "Strap in, astronaut!", visit: true };
+    case "jup-approve":
+      return { reaction: "hop", quip: "Launching… 🚀", visit: true };
+    case "jup-perps-long":
+      return { reaction: "cheer", quip: "Up only? 📈", visit: true };
+    case "jup-perps-short":
+      return { reaction: "wiggle", quip: "Betting it drops 📉", visit: true };
+    case "jup-perps-markets":
+      return { reaction: "giggle", quip: "New market, new vibes", visit: true };
+    case "jup-limit-expiry":
+      return { reaction: "hi", quip: "Good choice", visit: true };
+    case "jup-portfolio-demo":
+      return { reaction: "hearts", quip: "Let's peek inside!", visit: true };
     case "titan-switch-tokens":
       return { reaction: "clap", quip: "Flip!", visit: true };
     case "titan-refresh-quote":
@@ -83,6 +123,16 @@ export function respondTo(e: PageEvent): PetResponse | null {
       return { reaction: "giggle", quip: "Pick a token", visit: true };
   }
   if (e.id.startsWith("umb-tab-")) return { reaction: "hop", visit: false };
+  if (e.id.startsWith("jup-tab-")) return { reaction: "hop", quip: e.id === "jup-tab-limit" ? "Patience pays" : e.id === "jup-tab-dca" ? "Slow and steady" : undefined, visit: false };
   if (e.id.startsWith("titan-nav-") || e.id.startsWith("titan-tab-")) return { reaction: "hop", visit: false };
   return null;
+}
+
+/**
+ * Outcomes the page knows and the DOM doesn't (a swap went through, a balance is short): the page
+ * fires this and the pet reacts like it does to a click.
+ */
+export const PET_REACT_EVENT = "companion:react";
+export function petReact(reaction: Reaction, quip?: string) {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(PET_REACT_EVENT, { detail: { reaction, quip } }));
 }

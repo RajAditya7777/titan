@@ -10,9 +10,12 @@ import { useMicLevel } from "@/lib/companion/mic-level";
 import { useCompanion } from "./CompanionProvider";
 import { themeFor } from "./Panel";
 import { AstroCat } from "./AstroCat";
-import { respondTo, type PageEvent } from "@/lib/companion/page-reactions";
+import { PET_REACT_EVENT, respondTo, type PageEvent } from "@/lib/companion/page-reactions";
 
 const PET = { width: 88, height: 88 };
+/** Nap after this long with no mouse, keys or guide activity. */
+const SLEEP_AFTER_MS = 20_000;
+const WAKE_LINES = ["Huh? I'm up, I'm up!", "Oh! You're back 😺", "Was I asleep? Never.", "Yawn… what did I miss?"];
 /** Walking pace across the screen: brisk for a small pet, slow enough to see the steps. */
 const WALK_PX_PER_SEC = 340;
 
@@ -91,15 +94,27 @@ export function PetLayer() {
   }, [target]);
 
   // ── Personality ──────────────────────────────────────────────
+  /** Waking from a nap is a moment: a startled hop and a line, not a silent switch. */
+  const wakeUp = () => {
+    if (!live.current.sleeping) return;
+    setSleeping(false);
+    setReaction("hop");
+    setQuip(WAKE_LINES[Math.floor(Math.random() * WAKE_LINES.length)]!);
+    setTimeout(() => {
+      setReaction((r) => (r === "hop" ? null : r));
+      setQuip(null);
+    }, 2_200);
+  };
+
   // Any activity (mouse, keys, companion working) resets the sleep timer and wakes the pet.
   useEffect(() => {
     const wake = () => {
       lastActivity.current = Date.now();
-      setSleeping(false);
+      wakeUp();
     };
     window.addEventListener("keydown", wake);
     const t = setInterval(() => {
-      if (Date.now() - lastActivity.current > 25_000) setSleeping(true);
+      if (Date.now() - lastActivity.current > SLEEP_AFTER_MS) setSleeping(true);
     }, 2_000);
     return () => {
       window.removeEventListener("keydown", wake);
@@ -129,7 +144,7 @@ export function PetLayer() {
         const dy = last.clientY - petCenter.current.y;
         // Only track when the cursor is reasonably near, so it doesn't look possessed.
         setGaze(Math.hypot(dx, dy) < 520 ? (Math.atan2(dy, dx) * 180) / Math.PI : null);
-        setSleeping(false);
+        wakeUp();
       });
     };
     window.addEventListener("mousemove", onMove);
@@ -168,7 +183,7 @@ export function PetLayer() {
     const on = (kind: PageEvent["kind"]) => (ev: Event) => {
       const el = (ev.target as Element | null)?.closest?.<HTMLElement>("[data-companion]");
       const id = el?.dataset.companion;
-      if (!el || !(id?.startsWith("titan-") || id?.startsWith("umb-"))) return;
+      if (!el || !(id?.startsWith("titan-") || id?.startsWith("umb-") || id?.startsWith("jup-"))) return;
       const input = el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el : el.querySelector("input");
       const e: PageEvent = { id, kind, value: input?.value };
       // Typing is debounced so the pet reacts to the number, not to every keystroke.
@@ -182,8 +197,25 @@ export function PetLayer() {
       click: on("click"),
       change: on("change"),
     };
+    // Outcomes from the page (success, short balance): a bigger moment, held a little longer.
+    const onOutcome = (ev: Event) => {
+      const { reaction, quip } = (ev as CustomEvent<{ reaction: Reaction; quip?: string }>).detail;
+      if (live.current.busy) return;
+      lastActivity.current = Date.now();
+      setSleeping(false);
+      setRoamX(null);
+      setReaction(reaction);
+      setQuip(quip ?? null);
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        setReaction(null);
+        setQuip(null);
+      }, 4_200);
+    };
+    window.addEventListener(PET_REACT_EVENT, onOutcome);
     for (const [type, fn] of Object.entries(handlers)) document.addEventListener(type, fn, true);
     return () => {
+      window.removeEventListener(PET_REACT_EVENT, onOutcome);
       for (const [type, fn] of Object.entries(handlers)) document.removeEventListener(type, fn, true);
       clearTimeout(settle);
       clearTimeout(typing);
@@ -370,7 +402,7 @@ export function PetLayer() {
             exit={{ opacity: 0 }}
             style={{ left: pos.x - 150, top: pos.y + 30 }}
           >
-            Need help with Titan?
+            Need help with {productName(page)}?
           </motion.div>
         )}
       </AnimatePresence>
@@ -532,4 +564,12 @@ function BubbleControls({ canBack, onBack, onNext, onClose }: { canBack: boolean
       </button>
     </div>
   );
+}
+
+/** The product the pet is helping with, for its hover line. */
+function productName(page: string): string {
+  if (page.startsWith("jup_")) return "Jupiter";
+  if (page.startsWith("umbra")) return "Umbra";
+  if (page.startsWith("titan_")) return "Titan";
+  return "this page";
 }

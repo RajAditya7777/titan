@@ -33,3 +33,23 @@ describe("pet page reactions", () => {
     expect(parseAmount(" ")).toBeNull();
   });
 });
+
+describe("Jupiter reactions", () => {
+  it("reacts to every swap control", () => {
+    for (const id of ["jup-connect", "jup-wallet-connect", "jup-flip", "jup-sell-token", "jup-buy-token", "jup-swap-submit", "jup-approve", "jup-tab-limit"]) {
+      expect(respondTo({ id, kind: "click" }), id).not.toBeNull();
+    }
+    expect(respondTo({ id: "jup-swap-submit", kind: "click" })?.reaction).toBe("cheer");
+  });
+
+  it("gets more nervous as leverage climbs", () => {
+    expect(respondTo({ id: "jup-perps-leverage", kind: "input", value: "3" })?.reaction).toBe("giggle");
+    expect(respondTo({ id: "jup-perps-leverage", kind: "input", value: "20" })?.reaction).toBe("hop");
+    expect(respondTo({ id: "jup-perps-leverage", kind: "input", value: "200" })?.quip).toMatch(/liquidation/);
+  });
+
+  it("echoes typed amounts", () => {
+    expect(respondTo({ id: "jup-sell-amount", kind: "input", value: "2" })?.quip).toBe("2");
+    expect(respondTo({ id: "jup-perps-amount", kind: "input", value: "0" })?.reaction).toBe("wiggle");
+  });
+});

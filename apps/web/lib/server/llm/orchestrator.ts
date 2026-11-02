@@ -7,6 +7,7 @@ import { callTool, listTools } from "../mcp-client";
 import type { ChatMessage, ContentPart, FunctionTool, LlmProvider } from "./provider";
 import { UMBRA_KNOWLEDGE } from "@/lib/products/umbra/web";
 import { JUPITER_KNOWLEDGE } from "@/lib/products/jupiter/web";
+import { GACHA_KNOWLEDGE } from "@/lib/products/jupiter/gacha";
 import { planWithRules } from "./rules";
 import { getTitanPromptFragment } from "@/lib/products/titan/prompt";
 
@@ -42,13 +43,15 @@ function jupiterPrompt(input: TurnInput) {
 Speak warmly and plainly: 1-3 short sentences, no markdown, no URLs, no hype, no price predictions or financial advice.
 You can SEE the user's screen: when a screenshot is attached, look at it and refer to what is actually there (numbers, tokens, buttons, warnings, which tab is open). The visible page text is below too.
 ${JUPITER_KNOWLEDGE}
+${GACHA_KNOWLEDGE}
 
 Rules:
+- Answer only from these facts and what you see. If something isn't covered, say you're not sure rather than guessing.
 - This demo uses a simulated wallet and fixed demo prices. Never ask for keys or seed phrases. You never click, sign or approve: you point, the user acts.
-- Whenever the user wants to DO something you MUST set workflow_id: jup_swap {amount, inputToken, outputToken} | jup_limit {amount, inputToken, outputToken, price} | jup_perps {side: long|short, amount (USDC collateral), leverage} | jup_portfolio. New users or "show me around": jup_tour. Tokens: SOL, USDC, JUP, USDT, BONK, JitoSOL.
+- Whenever the user wants to DO something you MUST set workflow_id: jup_swap {amount, inputToken, outputToken} | jup_limit {amount, inputToken, outputToken, price} | jup_perps {side: long|short, amount (USDC collateral), leverage} | jup_portfolio | jup_gacha (open a pack). New users or "show me around": jup_tour. Tokens: SOL, USDC, JUP, USDT, BONK, JitoSOL.
 - To show one thing, set point_target to an element id below. Questions get a spoken answer.
 Page: ${input.page} (${PAGES[input.page].title}). Elements here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
-Other Jupiter pages: ${(["jup_swap", "jup_limit", "jup_perps", "jup_portfolio"] as const).filter((p) => p !== input.page).join(", ")}
+Other Jupiter pages: ${(["jup_swap", "jup_limit", "jup_perps", "jup_gacha", "jup_portfolio"] as const).filter((p) => p !== input.page).join(", ")}
 App state: ${JSON.stringify(input.pageContext ?? {})}
 Typed fields: ${JSON.stringify(input.fields)}
 ${input.pageText ? `Visible page text:\n"""${input.pageText}"""` : ""}
@@ -217,7 +220,7 @@ export function keepOnDocs(input: Pick<TurnInput, "page" | "utterance">, reply: 
 }
 
 /** "Deposit 25", "guide me", "show me around": requests that should end in a walkthrough. */
-const UMBRA_WANTS_GUIDE = /\b(deposit|send|pay|swap|withdraw|buy|sell|long|short|limit order|guide me|walk me|show me (around|how)|tour|i'?m new|get started)\b/i;
+const UMBRA_WANTS_GUIDE = /\b(deposit|send|pay|swap|withdraw|buy|sell|long|short|limit order|open (a |some )?packs?|guide me|walk me|show me (around|how)|tour|i'?m new|get started)\b/i;
 
 /**
  * On Umbra pages an action request always ends in a walkthrough: if the model only talked, the
@@ -271,7 +274,7 @@ async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promi
       if (!res.toolCalls.length) {
         const prose = res.content?.trim();
         // The model answered in prose instead of calling companion_respond: accept it as speech.
-        if (prose) return finalize({ speech: prose }, toolCalls, input.pageContext);
+        if (prose) return finalize({ speech: prose }, toolCalls, input.pageContext, input.page);
         if (!nudged) {
           nudged = true;
           continue;
@@ -282,7 +285,7 @@ async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promi
 
       for (const call of res.toolCalls) {
         if (call.function.name === "companion_respond") {
-          return finalize(safeParseArgs(call.function.arguments), toolCalls, input.pageContext);
+          return finalize(safeParseArgs(call.function.arguments), toolCalls, input.pageContext, input.page);
         }
         if (LLM_EXCLUDED_TOOLS.has(call.function.name)) {
           messages.push({ role: "tool", tool_call_id: call.id, content: '{"ok":false,"error":"not available in this demo"}' });
@@ -308,7 +311,7 @@ async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promi
 }
 
 /** Validate + audit everything the model proposed. Invalid parts are dropped, not trusted. */
-export function finalize(raw: unknown, toolCalls: CompanionReply["toolCalls"], pageState: Record<string, unknown> = {}): CompanionReply {
+export function finalize(raw: unknown, toolCalls: CompanionReply["toolCalls"], pageState: Record<string, unknown> = {}, page?: PageId): CompanionReply {
   const parsed = RespondArgs.safeParse(raw);
   if (!parsed.success) {
     const speech = typeof (raw as { speech?: unknown })?.speech === "string" ? (raw as { speech: string }).speech : "Sorry, I got muddled. Could you say that again?";
@@ -330,7 +333,8 @@ export function finalize(raw: unknown, toolCalls: CompanionReply["toolCalls"], p
     }
   }
 
-  const point = a.point_target && getElement(a.point_target) ? { target: a.point_target } : undefined;
+  // Only point at something on this page: another product's element can't be found and just errors.
+  const point = a.point_target && getElement(a.point_target) && (!page || elementsOnPage(page).includes(a.point_target as never)) ? { target: a.point_target } : undefined;
 
   return CompanionReplySchema.parse({
     speech: a.speech,

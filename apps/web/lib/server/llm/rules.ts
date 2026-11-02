@@ -118,6 +118,10 @@ function routeJupiter(text: string, ctx: Ctx): Reply {
     return wf("jup_perps", "Let's set up that position carefully.", { side: /short/i.test(text) ? "short" : "long", leverage: text.match(/(\d+(?:\.\d+)?)\s*x\b/i)?.[1] });
   if (/\b(limit|target price|when .* reaches)\b/i.test(text)) return wf("jup_limit", "Let's place a limit order together.", { price: text.match(/\$\s*(\d+(?:\.\d+)?)/)?.[1] });
   if (/\b(swap|buy|sell|trade|exchange)\b/i.test(text)) return wf("jup_swap", "Let's do that swap. I'll point at each step.");
+  if (/\b(gacha|gotcha|pack|pull|graded|card)\b/i.test(text))
+    return /\b(open|buy|try|help me|guide)\b/i.test(text)
+      ? wf("jup_gacha", "Let's open a pack together.")
+      : { speech: "Gacha sells packs that each pull one real, graded collectible card, paid in USDC. Each pack shows its expected value and odds, and you can sell a pull back at 93 percent within 3 days." };
   if (/\b(portfolio|holdings|net ?worth|airdrop)\b/i.test(text)) return wf("jup_portfolio", "Here's where you track everything.");
   if (/\b(new|tour|how.*work|show me around|what is jupiter)\b/i.test(text)) return wf("jup_tour", "Welcome to Jupiter! Let me show you around.");
   return { speech: "I can show you around Jupiter, or guide a swap, a limit order or a perps position. What would you like?", needsClarification: true };

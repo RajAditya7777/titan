@@ -38,6 +38,7 @@ export const PAGES = {
   jup_swap: { path: "/jup", title: "Jupiter Swap", summary: "Swap any Solana token at the best price with Ultra routing; Market, Limit and DCA." },
   jup_limit: { path: "/jup/limit", title: "Jupiter Limit Order", summary: "Sell or buy when a token reaches your target price, with an expiry." },
   jup_perps: { path: "/jup/perps", title: "Jupiter Perps", summary: "Long or short SOL, ETH and BTC with up to 250x leverage, backed by JLP." },
+  jup_gacha: { path: "/jup/gacha", title: "Jupiter Gacha", summary: "Open packs to pull real graded collectible cards; collection and marketplace." },
   jup_portfolio: { path: "/jup/portfolio", title: "Jupiter Portfolio", summary: "Track holdings, positions, yield and airdrops across 198 Solana protocols." },
   umbra: { path: "/umbra/console", title: "Nimbus Console", summary: "Confidential balances, private transfers, and shielding on Solana powered by the Nimbus protocol (simulated demo)." },
 } as const;
@@ -325,6 +326,15 @@ export const ELEMENTS = {
   "jup-perps-leverage": { page: "jup_perps", kind: "input", label: "Leverage", description: "How many times your collateral the position is. Up to 250x.", validation: "leverage", fillable: true },
   "jup-perps-liq": { page: "jup_perps", kind: "display", label: "Liquidation price", description: "If the price reaches this, the position is closed and the collateral lost." },
   "jup-perps-submit": { page: "jup_perps", kind: "button", label: "Open position", description: "Opens the position after your wallet approves.", sensitive: true },
+  "jup-gacha-tabs": { page: "jup_gacha", kind: "nav", label: "Packs / Collection / Marketplace", description: "Buy and open packs, see the cards you own, or trade with other collectors." },
+  "jup-gacha-packs": { page: "jup_gacha", kind: "section", label: "Packs", description: "Each pack has a price and pulls one graded card." },
+  "jup-gacha-ev": { page: "jup_gacha", kind: "display", label: "Expected value", description: "The average value of a pull from this pack." },
+  "jup-gacha-count": { page: "jup_gacha", kind: "input", label: "Packs", description: "How many packs to open.", validation: "positive-amount", fillable: true },
+  "jup-gacha-open": { page: "jup_gacha", kind: "button", label: "Open pack", description: "Pays for the packs and reveals your pulls, after your wallet approves.", sensitive: true },
+  "jup-gacha-turbo": { page: "jup_gacha", kind: "button", label: "Turbo", description: "Auto-sells Common pulls for USDC." },
+  "jup-gacha-buyback": { page: "jup_gacha", kind: "display", label: "Instant buyback", description: "Sell any pull back for USDC at 93% within 3 days." },
+  "jup-gacha-odds": { page: "jup_gacha", kind: "section", label: "Statistics & odds", description: "Chance of each rarity tier and its value range." },
+  "jup-gacha-pulls": { page: "jup_gacha", kind: "section", label: "Latest Pulls", description: "Recent big pulls; rare outliers, not typical results." },
   "jup-portfolio-search": { page: "jup_portfolio", kind: "input", label: "Wallet search", description: "Track any wallet address or .sol domain." },
   "jup-portfolio-demo": { page: "jup_portfolio", kind: "section", label: "Demo wallets", description: "Example wallets to explore the dashboard." },
   "jup-portfolio-summary": { page: "jup_portfolio", kind: "display", label: "Net worth", description: "Total value of the wallet you're viewing." },
@@ -345,6 +355,7 @@ const PREFIXES: [string, PageId][] = [
   ["/titan/docs/", "titan_docs"],
   ["/titan/rewards/", "titan_rewards"],
   ["/umbra/", "umbra_app"],
+  ["/jup/gacha", "jup_gacha"],
   ["/jup/", "jup_swap"],
 ];
 

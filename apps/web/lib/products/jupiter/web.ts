@@ -37,6 +37,7 @@ export function liquidationPrice(side: "long" | "short", entry: number, leverage
 }
 
 export const JUP_SUGGESTIONS = [
+  "What is Gacha and how does it work?",
   "I'm new. Show me around Jupiter",
   "Help me swap 1 SOL for USDC",
   "Look at my screen and explain it",
@@ -67,7 +68,7 @@ export interface JupState {
   perpSide?: "long" | "short";
 }
 
-export type JupGoal = "tour" | "swap" | "limit" | "perps" | "portfolio";
+export type JupGoal = "tour" | "swap" | "limit" | "perps" | "portfolio" | "gacha";
 
 export function planJupiter(goal: JupGoal, params: Record<string, string | undefined>, state: JupState = {}): { title: string; steps: Step[] } {
   const connect: Step[] = state.connected
@@ -140,6 +141,20 @@ export function planJupiter(goal: JupGoal, params: Record<string, string | undef
         ],
       };
     }
+    case "gacha":
+      return {
+        title: "Open a Gacha pack",
+        steps: [
+          { type: "navigate_to_page", page: "jup_gacha" },
+          { type: "point", target: "jup-gacha-packs", say: "Each pack pulls one real, graded collectible card. Pick one you like; Lucky is 100 USDC." },
+          { type: "point", target: "jup-gacha-ev", say: "Expected value is the average pull. For Lucky it's about 100.61, but most single pulls land below that." },
+          { type: "point", target: "jup-gacha-odds", say: "Here are the odds: 75 percent Common, 20 Uncommon, 4 Rare and 1 percent Epic." },
+          { type: "point", target: "jup-gacha-buyback", say: "Don't like your card? Instant buyback pays 93 percent of its value within 3 days." },
+          ...connect,
+          { type: "request_input", target: "jup-gacha-count", say: "How many packs? Let's start with one.", suggestedValue: "1" },
+          { type: "stop_before_signing", target: "jup-gacha-open", say: "Tap Open and approve in your wallet. Good luck!" },
+        ],
+      };
     case "portfolio":
       return {
         title: "Your portfolio",

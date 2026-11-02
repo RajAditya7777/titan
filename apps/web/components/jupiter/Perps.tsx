@@ -5,6 +5,7 @@ import { Lock, Search, Star } from "lucide-react";
 import { useCompanion, useGuidedField } from "@/components/companion/CompanionProvider";
 import { PERP_MARKETS, liquidationPrice, type PerpMarket } from "@/lib/products/jupiter/web";
 import { perpProblem, setJup, useJup } from "./store";
+import { petReact } from "@/lib/companion/page-reactions";
 import { TokenIcon } from "./Trade";
 
 const fmt = (n: number, d = 2) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -82,6 +83,9 @@ export function PerpsView() {
       problem,
     }));
   }, [s, entry, size, liq, problem, setPageContext]);
+  useEffect(() => {
+    if (s.connected && problem === "Insufficient USDC") petReact("wiggle", "Not enough USDC for that 😿");
+  }, [problem]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="grid min-h-[calc(100vh-76px)] grid-cols-1 gap-2 p-2 lg:grid-cols-[230px_1fr_330px]">
