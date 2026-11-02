@@ -169,16 +169,21 @@ test("rewards: every control works and campaigns open their own page", async ({ 
   await expect(page).toHaveURL(/\/titan\/rewards$/);
 });
 
-test("developer docs: sidebar, search, code tabs and page links work", async ({ page }) => {
-  await page.goto("/titan/docs/developers-portal/introduction");
+test("docs: both spaces, switcher, search, code tabs and page links work", async ({ page }) => {
+  await page.goto("/titan/docs/developer-doc/developers-portal/introduction");
   await expect(page.getByRole("heading", { level: 1, name: "Introduction" })).toBeVisible();
   await page.getByRole("tab", { name: "Python" }).click();
   await expect(page.getByRole("tabpanel")).toContainText("import os, requests");
   await page.getByLabel("Search docs").fill("errors");
   await page.getByLabel("Search docs").press("Enter");
-  await expect(page).toHaveURL(/developers-portal\/errors$/);
+  await expect(page).toHaveURL(/developer-doc\/developers-portal\/errors$/);
   await expect(page.locator('aside a[aria-current="page"]')).toHaveText("Errors");
   await page.getByRole("link", { name: /Next/ }).click();
   await expect(page).toHaveURL(/developers-portal\/faq$/);
+  // Space switcher → the Products space, as on GitBook.
+  await page.getByRole("button", { name: "Developer Docs" }).click();
+  await page.getByRole("option", { name: "Products" }).click();
+  await expect(page).toHaveURL(/\/titan\/docs$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Welcome to Titan" })).toBeVisible();
   await expect(page.getByTestId("companion-pet")).toBeVisible();
 });

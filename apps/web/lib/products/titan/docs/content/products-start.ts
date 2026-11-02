@@ -1,0 +1,261 @@
+import type { DocContent } from "../schema";
+
+/** Page bodies for this section, keyed by slug. Own words; facts exact. */
+export const PAGES: Record<string, DocContent> = {
+  "": {
+    lead: "Outperformance on your token swaps.",
+    blocks: [
+      { t: "p", text: "You can start swapping right now at [app.titan.exchange](https://app.titan.exchange/)." },
+      { t: "p", text: "One aim drives everything Titan builds for people on Solana:" },
+      { t: "h3", text: "Experience Outperformance." },
+      { t: "p", text: "Solana gives you fast, cheap transactions, so you can take control, hunt down the best prices and cut out needless middlemen. The hard part is that so much of the data sits on-chain: how do you know the deal you got really is the best one?" },
+      { t: "h3", text: "Titan's Products" },
+      { t: "p", text: "Titan currently offers 3 main features:" },
+      {
+        t: "list",
+        items: [
+          "**Unique Spot Swap Routes (DEX Aggregator):** Titan built its own routing algorithm, Argos, to fix weaknesses in existing route-finding. Users get a better price 80% of the time.",
+          "**Meta Aggregation on Solana:** Titan queries several aggregators at once and sends you to whichever quote is best, with no fees added.",
+          "**Titan Prime Mode:** Prime tunes your swap settings for you, including slippage and how the transaction lands, so you get the best execution through Titan's meta-aggregator.",
+        ],
+      },
+      { t: "p", text: "Every part of Titan exists to deliver that outperformance. The interface shows how much you have gained by using the platform, alongside your volume and referrals." },
+      { t: "callout", tone: "info", text: "Titan's API for integrations and systematic traders is coming soon. Contact the team for details." },
+    ],
+  },
+
+  "getting-started/quickstart": {
+    lead: "How to interact with the Titan platform",
+    blocks: [
+      { t: "callout", tone: "info", text: "Titan charges no fees on basic swaps. The DEXes or DEX aggregators it draws on may charge their own fees." },
+      { t: "h2", text: "Connecting a Wallet" },
+      { t: "p", text: "Connect your wallet to begin; a wide range of wallets is supported." },
+      { t: "p", text: "After connecting you can use the swap interface. You will also see your cumulative trading volume on Titan, plus your total outperformance and the edge you have gained compared with other platforms." },
+      { t: "callout", tone: "info", text: "Ledger wallet integrations are supported with these wallets." },
+      { t: "h2", text: "How to do a Swap" },
+      {
+        t: "steps",
+        items: [
+          { title: "Select your tokens", body: "Pick the input and output tokens. Input tokens are ordered by the USD value held in your wallet; output tokens are ordered by popularity and relevance." },
+          { title: "Enter the input amount", body: "Type how much of the input token to trade and quotes fill in the estimated output. Setting the output amount directly is not currently allowed." },
+          { title: "Review the quotes", body: "Titan collects quotes from several aggregators and shows the estimated output and transaction details of the best one." },
+          { title: "Approve and execute", body: "The number of pools and DEXes in the chosen route is shown. Click the Swap button to execute through your connected wallet." },
+        ],
+      },
+      { t: "p", text: "Quotes refresh every second, and each one is simulated live on the blockchain so the output you see reflects current conditions for that route." },
+      { t: "callout", tone: "info", text: "Titan gives the best on-chain estimate of what a quote will actually return." },
+      { t: "h2", text: "Trade Settings" },
+      { t: "p", text: "Use the Max or % buttons in the input bar to size a trade quickly. The % button lets you choose precisely what portion of the input token to trade." },
+      { t: "p", text: "For more options, see [Prime Mode and Custom Settings](/titan/docs/getting-started/quickstart-1)." },
+    ],
+  },
+
+  "getting-started/quickstart-1": {
+    lead: "Transaction settings on Titan and how to set your own custom settings",
+    blocks: [
+      { t: "h3", text: "Extra User Parameters" },
+      { t: "p", text: "Several aspects of your transactions and routes can be controlled from the settings button in the top right corner of the swap box:" },
+      { t: "list", items: ["Prime vs Manual Mode", "Max Slippage", "Transaction Fee Methods", "AMM Exclusion"] },
+      { t: "h3", text: "Prime Mode" },
+      { t: "p", text: "Prime Mode tunes your swap settings automatically, covering slippage and transaction landing, to get the best execution through Titan's meta-aggregator. It includes automatic sandwich protection and charges zero fees, whereas comparable services can take up to 10 basis points." },
+      { t: "p", text: "Combined with Titan's proprietary algorithm, this means an extra 20 basis points per trade when you use Prime." },
+      { t: "p", text: "When the settings button shows an animated Prime button, Prime settings are being applied to your trade." },
+      { t: "callout", tone: "info", text: "Titan quotes are simulated at the moment you press the swap button. If the result would revert because your slippage tolerance is exceeded, the attempt ends in an error message." },
+      { t: "h3", text: "Manual Mode" },
+      { t: "h3", text: "Max Slippage" },
+      { t: "p", text: "Slippage is how far your final execution price lands from the quoted price. The usual cause is that someone else traded ahead of you. This setting caps what you will accept: if slippage goes past your maximum, the trade reverts, although the blockchain still keeps the transaction fee." },
+      { t: "p", text: "You can adjust 2 slippage settings:" },
+      {
+        t: "list",
+        items: [
+          "**Base Tokens:** any pair that is not stablecoin-to-stablecoin and not a SOL/LST or LST/SOL pair.",
+          "**Stable/LST:** stablecoin-to-stablecoin pairs and SOL/LST or LST/SOL pairs.",
+        ],
+      },
+      { t: "p", text: "They are separate because some tokens are so closely tied in value that they see far less slippage." },
+      { t: "h3", text: "Transaction Fee Methods" },
+      { t: "p", text: "Titan supports two broadcast-mode fee types for processing transactions today, with more to come:" },
+      {
+        t: "list",
+        items: [
+          "[Priority Fees](https://solana.com/developers/guides/advanced/how-to-use-priority-fees)",
+          "**MEV Protect:** a mix of [Jito](https://docs.jito.wtf/) and [Nozomi](https://use.temporal.xyz/) with anti-sandwich protection added.",
+        ],
+      },
+      { t: "p", text: "Every broadcast mode offers the same two options:" },
+      {
+        t: "list",
+        items: [
+          "**Auto fee mode:** Titan picks the fee level with the help of outside services such as Helius, Triton and Jito, according to how fast you want the transaction handled. You also set a maximum cap in case the suggested fee exceeds what you are willing to pay.",
+          "**Custom fee mode:** you enter the exact fee you want to pay.",
+        ],
+      },
+      { t: "callout", tone: "warning", text: "Some wallets may enforce a minimum priority fee per transaction." },
+      { t: "h3", text: "AMM Exclusion" },
+      { t: "p", text: "You can choose to leave specific AMMs out of your routes, for whatever reason you like." },
+      { t: "p", text: "The AMMs you select are removed from generated routes. Names are normalized across DEX aggregators, so you do not need to know how each aggregator labels or identifies a given DEX." },
+    ],
+  },
+
+  "getting-started/titan-limit-orders": {
+    lead: "Titan Limit Orders are TRUE on-chain limit orders.",
+    blocks: [
+      { t: "p", text: "These are not the trigger orders offered elsewhere; Titan limit orders keep executing reliably through volatility." },
+      { t: "p", text: "Titan's architecture brings CeFi-grade execution on-chain to Solana, with orders filled by professional market makers such as Auros, one of the top market-making firms in the world." },
+      { t: "p", text: "Limit Orders run on specific token pairs, which is what allows top-quality execution. More pairs will be added as the service develops." },
+      { t: "p", text: "Trigger orders today tend to fill very slowly and unpredictably. Titan Limit Orders fill efficiently and try to account for market volatility, so orders can fill hundreds or thousands of blocks sooner, which matters a great deal to traders. Partial fills are supported." },
+      { t: "p", text: "Limit Orders carry a 10 bps fee, with a discount for Titan VIP users. That is up to 50% lower than comparable competing products, with better execution quality. There is a minimum notional of $10 USD." },
+      { t: "p", text: "When an order expires or is filled, a crank automatically sends the funds back to your main wallet." },
+      { t: "callout", tone: "info", text: "A rent fee is also collected to open the relevant account. It is returned in full when the order completes or is cancelled." },
+      { t: "p", text: "Anyone can fill Titan Limit Orders. Instructions are in the [searcher limit orders guide](/titan/docs/developer-doc/searchers-limit-orders/overview); contact the team with any questions." },
+      { t: "h3", text: "Limit Order Guide" },
+      { t: "p", text: "To reach the limit order section, click the Limit tab on the swap page." },
+      { t: "p", text: "Once there, a chart and your order history load as well." },
+      { t: "p", text: "Open the dropdown to choose the token pair you want to trade." },
+      { t: "p", text: "After picking the pair, set the direction of the trade, the limit price, the quantity and the expiry date, then execute the order." },
+      { t: "p", text: "Note that you cannot set a limit price above the market price, and a minimum $10 notional is required." },
+      { t: "h3", text: "Order Management" },
+      { t: "p", text: "Manage orders from the swap page under open orders, where you can see each order's progress, expiry and limit price. Each one also has a link to Solscan, and you can cancel an order by clicking the x." },
+      { t: "p", text: "You can also open order history to check progress, and clicking an order shows the history for that specific order." },
+      { t: "p", text: "A notification button alerts you every time a limit order has an update." },
+      { t: "h3", text: "Analytics" },
+      { t: "p", text: "Limit Orders have their own tracking on the summary page and the profile page, and there will be a dedicated limit order leaderboard." },
+      { t: "h3", text: "Charting Data" },
+      { t: "p", text: "Chart data comes from a mix of TradingView and Binance. It may not reflect a market maker's inventory at certain moments, so keep that in mind." },
+    ],
+  },
+
+  "getting-started/titan-private-swaps": {
+    lead: "Titan Private Swaps add a private execution layer to your token swaps on Solana. Trade knowing your activity is not publicly tied to your main wallet history.",
+    blocks: [
+      { t: "p", text: "Each swap goes through a one-time intermediary wallet created fresh for that trade. That wallet, not your primary address, signs on-chain, which breaks the on-chain link between your trading and your main wallet." },
+      { t: "h3", text: "How It's Different" },
+      { t: "p", text: "Ordinary Solana swaps are completely public: anyone can trace a wallet address and see every trade it has made. Private Swaps change that by sending each trade through a fresh intermediary wallet that signs instead of your primary address, so chain analysis tools cannot tie the trade back to you." },
+      { t: "p", text: "The feature is built on the **Vanish wallet**, which is its own wallet created just for private swaps. Trades are executed with the funds held there, so your main wallet is never touched and has no connection to the trading." },
+      {
+        t: "list",
+        items: [
+          "**Unlinked activity:** your main wallet never shows up as the trader. Only a one-time intermediary wallet is visible on-chain, and it is discarded after each trade, making it very hard to assemble a picture of your activity.",
+          "**Private trading:** every swap uses a new intermediary address created for that trade and never reused, so no single address collects your trading history or token balances.",
+          "**Full control, anytime:** your funds stay in your custody. Deposits are built and signed by your own wallet, you can move funds back to your main wallet whenever you like with no protocol fees, and you can use Vanish or skip it on every swap.",
+        ],
+      },
+      { t: "divider" },
+      { t: "h3", text: "Getting to Private Swaps" },
+      { t: "p", text: "From the swap page, open the **Private** tab in the navigation bar, which sits beside Instant and Limit." },
+      { t: "p", text: "First-timers are guided through a quick one-time setup to prepare the Vanish wallet. After that, the full swap interface loads each time you open the Private tab." },
+      { t: "h3", text: "Enable Vanish" },
+      { t: "p", text: "If Vanish is not set up yet, you start on the onboarding screen. Click **Enable Vanish** to generate your Vanish wallet; this is a one-time step." },
+      { t: "p", text: "Next, your wallet is asked to sign a message that authenticates your Vanish session. The server verifies the signature and keeps it securely, and your API key never reaches the browser. A session lasts 24 hours. You get a warning 5 minutes before it ends and can sign again to carry on without interruption." },
+      { t: "h3", text: "Fund Your Vanish Wallet" },
+      { t: "p", text: "With the Vanish wallet active, put funds into it before you swap. Use **Fund From Main Wallet** on the Private swap page." },
+      { t: "p", text: "A modal shows your **Main wallet** and **Vanish wallet** next to each other with their balances. Enter the amount of SOL to transfer and confirm. Your own wallet builds and signs this transfer completely on the client side, which means Titan does not hold your funds at any point in this step." },
+      { t: "p", text: "This transfer has no protocol fees." },
+      { t: "callout", tone: "info", text: "**Minimum SOL balance:** keep at least ~0.012 SOL in the Vanish wallet at all times. That amount pays for the account rent Vanish lends on each trade to create the one-time intermediary wallet, and it must be present in addition to any SOL you intend to sell. If your balance falls below it, the Swap button reads \"Insufficient SOL For Private Swap\" and you must top up first." },
+      { t: "divider" },
+      { t: "h3", text: "Executing a Swap" },
+      { t: "p", text: "With the Vanish wallet funded you can swap. The interface works much like Instant swaps, with a few Private-specific points." },
+      { t: "p", text: "**Sell:** pick the token and the amount. Note that the balance on display belongs to the Vanish wallet and not to your main one." },
+      { t: "p", text: "**Buy:** choose the token you want to receive." },
+      { t: "callout", tone: "info", text: "**SOL pairing:** every Private Swap must include SOL, either as what you sell or as what you buy. The protocol demands this because of the way the one-time wallet operates. On the other side, SPL tokens and Token-2022 tokens are both supported." },
+      { t: "p", text: "Once tokens and amounts are set, review the **Summary** panel before you confirm:" },
+      {
+        t: "list",
+        items: [
+          "**You sell:** precisely how much leaves the Vanish wallet",
+          "**You buy (est.):** the amount you should get, as an estimate",
+          "**Total Vanish points:** what this swap earns you in points",
+          "Protocol **fee:** 0.25%",
+        ],
+      },
+      { t: "p", text: "The **Quotes** section compares Titan's price with other aggregators in real time, and Titan highlights the best available price across routes." },
+      { t: "p", text: "**Signing:** every swap needs its own wallet signature before it runs, by design. A signature is cryptographically bound to the precise parameters of that one trade (token pair, amount and timestamp), so once signed it cannot be replayed or modified. Expect one signing prompt per swap." },
+      { t: "p", text: "After signing, click **Swap**. All Private Swaps are sent as Jito bundles in MEV-protected mode, which guards the trade against front-running." },
+      { t: "p", text: "**After execution:** once the on-chain transaction confirms a brief finalization follows, during which Titan does its internal settlement of the trade and refreshes your balance and trade history. It usually finishes quickly but can take up to 2 minutes. If it does not finish within your session, Titan picks it up and retries the next time you authenticate." },
+      { t: "divider" },
+      { t: "h3", text: "What Happens if a Swap Fails?" },
+      { t: "p", text: "A Private Swap can occasionally fail, for example because slippage limits were exceeded, the network was congested, or the Jito bundle did not land in time. Your funds are not lost." },
+      { t: "p", text: "Because the swap goes through a one-time intermediary wallet, anything staged for the trade is returned to your Vanish wallet automatically, typically within a few minutes. You need not do anything; Titan handles it in the background." },
+      { t: "p", text: "When your balance is restored you will see it in your Vanish wallet and can try again. Should the funds still be missing several minutes later, look up the failed trade's status in your order history or get in touch with the team." },
+      { t: "divider" },
+      { t: "h3", text: "Managing Your Vanish Wallet" },
+      { t: "p", text: "Funds can go from your main wallet to the Vanish wallet, or back, whenever you want. Use **Move funds**, found at the bottom of the Private swap page." },
+      { t: "p", text: "Transfers in either direction carry no fees. Withdrawals to your main wallet use a transaction built by Vanish that you sign and submit, and the destination is always your own wallet. The swap interface always displays your present Vanish balance, so you can see what you have available to trade." },
+      { t: "divider" },
+      { t: "h3", text: "Analytics / Points" },
+      { t: "p", text: "Every Private Swap earns Vanish points, which are recorded trade by trade. You can see your points balance and swap history on your profile page and on the rewards leaderboard, and you can follow the progress of individual swaps in your order history." },
+    ],
+  },
+
+  "getting-started/analytics": {
+    blocks: [
+      { t: "p", text: "Titan will give users extra analytics to help them make sense of their swaps. As it processes more trades, it will launch further features that users ask for, giving them timely information about their on-chain trades." },
+      { t: "p", text: "After a trade you can see the total outperformance and total fee savings you have gained from using Titan. Together these make up your total trading edge: the total dollar value you have gained just by trading on Titan." },
+      { t: "p", text: "**Outperformance** is the benefit of being able to compare many quotes for the trade you want, especially quotes that are unique to Titan." },
+      { t: "p", text: "**Total fee savings** adds up the fees you would have paid had you traded on other platforms." },
+      { t: "p", text: "Other statistics, such as total volume and number of trades, are shown too. After you have referred at least 2 people, an aggregate view of your referred group's data becomes available too." },
+      { t: "p", text: "Badges you have earned are displayed here as well." },
+    ],
+  },
+
+  "getting-started/usernames-and-referrals": {
+    blocks: [
+      { t: "p", text: "Titan lets you set a username to represent your profile. That username is also how you refer others to the platform, by giving them invite codes. People who refer others can see the total aggregate volume and outperformance for themselves and the users they referred." },
+      { t: "p", text: "You can find referral invite codes in the wallet panel at the top right." },
+      { t: "p", text: "There may be extra benefits for both the referred user and the referrer in the future." },
+    ],
+  },
+
+  "getting-started/titan-dex-integrations": {
+    blocks: [
+      { t: "p", text: "To integrate your AMM or liquidity source with Titan, follow the guidelines at [Titan-Pathfinder/integration-template](https://github.com/Titan-Pathfinder/integration-template)." },
+      { t: "p", text: "Titan supports every kind of integration, from standard swaps to specialized mint/redeem integrations." },
+      { t: "p", text: "For questions or requests, contact the team directly on Telegram or Discord." },
+    ],
+  },
+
+  "getting-started/titan-dart": {
+    lead: "How to use DART when trading on Titan",
+    blocks: [
+      { t: "h2", text: "DART Settings" },
+      { t: "p", text: "Control how Titan routes your swaps by configuring DART right in the swap interface." },
+      { t: "h3", text: "Configuration" },
+      { t: "p", text: "Click the DART box above the swap box to change your DART settings. For pairs eligible for DART, it defaults to **Auto**." },
+      {
+        t: "table",
+        head: ["Mode", "Behavior"],
+        rows: [
+          ["**Auto**", "Titan combines Argos and DART to find the best execution. Recommended setting."],
+          ["**Only**", "Titan routes through DART only."],
+          ["**Off**", "Titan uses only off-chain Argos routing."],
+        ],
+      },
+      { t: "h2", text: "DART Available Pairs" },
+      { t: "p", text: "At the moment DART routing covers the pairs below, and further ones are on the way." },
+      {
+        t: "list",
+        items: [
+          "**SOL and stablecoin routes:** USDT/USDC, SOL/USDT, SOL/USDC",
+          "**Wrapped majors:** wETH/USDC, cbBTC/USDC",
+          "**Stablecoins:** PYUSD/USDC, USD1/USDC, syrupUSD/USDC, USDG/USDC, CASH/USDC",
+          "**Other tokens:** HYPE/USDC, ZEC/USDC, TRUMP/USDC, PENGU/USDC, AAVE/USDC, PUMP/USDC, FARTCOIN/USDC, MEGA/USDC, SPCX/USDC, MU/USDC",
+        ],
+      },
+      { t: "h2", text: "DART Fees" },
+      { t: "p", text: "Titan DART charges a maximum of 1 bps per swap. A swap is routed via DART only when the final execution, after fees and expected slippage, beats every other router." },
+      { t: "h2", text: "DART Status Indicator" },
+      { t: "p", text: "A colored dot on the DART swap page reflects, in real time, whether DART is executing. To stay easy to read, it is steady: nothing animates or flickers." },
+      { t: "p", text: "With DART set to **Only**, a green indicator confirms DART is executing the swap and Titan returns the best price across all quoted routes. With DART set to **Off**, a red indicator confirms your transaction will run through non-DART routes." },
+      {
+        t: "table",
+        head: ["Color", "Meaning"],
+        rows: [
+          ["**Green**", "DART is live and active: it is the selected route that will execute your swap."],
+          ["**Red**", "DART is not executing the trade, either because it is unavailable or because another route is being used."],
+        ],
+      },
+      { t: "callout", tone: "info", text: "**Note:** DART showing up among the quotes is not enough to make the dot green. It goes green only if DART holds the selected, winning quote that will actually run. In short, green says DART is handling your trade rather than merely being compared." },
+      { t: "p", text: "A quick look is enough to know if DART is executing your trade, so there is no need to dig into route details." },
+    ],
+  },
+};
