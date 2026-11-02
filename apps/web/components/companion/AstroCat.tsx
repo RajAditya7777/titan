@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion, type TargetAndTransition } from "motion/react";
 import type { PetState } from "./CompanionProvider";
 import type { Reaction } from "./Pet";
@@ -112,25 +112,32 @@ const GESTURES: Partial<Record<Reaction | "celebrating" | "moving" | "speaking" 
 };
 
 const REST = { x: 0, y: 0, rotate: 0, scale: 1, scaleX: 1, scaleY: 1 };
+/** Before it pushes off: a tuck, like gathering for a jump. On arrival: squash, overshoot, settle. */
+const ANTICIPATE: TargetAndTransition = { y: 3, scaleY: 0.88, scaleX: 1.07, x: 0, transition: { duration: 0.14, ease: "easeOut" } };
+const LAND: TargetAndTransition = { y: [2, -2, 0], scaleY: [0.88, 1.06, 1], scaleX: [1.08, 0.97, 1], x: 0, transition: { duration: 0.38, ease: "easeOut" } };
 /** It floats: weightless drift instead of standing still. */
 const BODY_FLOAT: Partial<Record<PetState | "hover", TargetAndTransition>> = {
-  idle: { y: [0, -4, 0], rotate: [-2, 2, -2], transition: { duration: 4, repeat: Infinity, ease: "easeInOut" } },
+  // Weightless drift: rises and sinks, a little side drift, never a tilt of the whole picture.
+  idle: { y: [0, -4, 0], x: [0, 1, 0, -1, 0], transition: { duration: 4, repeat: Infinity, ease: "easeInOut" } },
   hover: { y: -6, transition: { type: "spring", stiffness: 300, damping: 14 } },
   listening: { y: [0, -2, 0], transition: { duration: 1.4, repeat: Infinity } },
-  thinking: { y: [0, -3, 0], rotate: [-3, 3, -3], transition: { duration: 2.6, repeat: Infinity, ease: "easeInOut" } },
+  thinking: { y: [0, -3, 0], transition: { duration: 2.6, repeat: Infinity, ease: "easeInOut" } },
   speaking: { y: [0, -2, 0], transition: { duration: 0.5, repeat: Infinity } },
-  moving: { y: [0, -3, 0], transition: { duration: 0.5, repeat: Infinity, ease: "easeInOut" } },
+  // Zero-g swim: a bob per kick and a sway toward the kicking leg (in step with the flutter kick).
+  moving: { y: [0, -3, 0, -3, 0], x: [-1.5, 0, 1.5, 0, -1.5], scaleY: [0.98, 1.02, 0.98, 1.02, 0.98], transition: { duration: 0.6, repeat: Infinity, ease: "easeInOut" } },
   pointing: { y: [0, -3, 0], transition: { duration: 2, repeat: Infinity, ease: "easeInOut" } },
-  waiting: { y: [0, -3, 0], rotate: [-1.5, 1.5, -1.5], transition: { duration: 3, repeat: Infinity, ease: "easeInOut" } },
-  celebrating: { y: [0, -20, 0, -10, 0], rotate: [0, -10, 10, 0], transition: { duration: 0.9, repeat: 1 } },
-  error: { rotate: -6, x: [0, -3, 3, -2, 0], transition: { duration: 0.5 } },
+  waiting: { y: [0, -3, 0], x: [0, 1, 0, -1, 0], transition: { duration: 3, repeat: Infinity, ease: "easeInOut" } },
+  celebrating: { y: [0, 3, -20, 0, -10, 0], scaleY: [1, 0.9, 1.08, 0.92, 1.03, 1], transition: { duration: 0.9, repeat: 1 } },
+  error: { x: [0, -3, 3, -2, 0], scaleY: [1, 0.96, 1], transition: { duration: 0.5 } },
 };
 const REACTION_ANIM: Partial<Record<Reaction, TargetAndTransition>> = {
   hop: { y: [0, 4, -16, 0], scaleY: [1, 0.9, 1.06, 1], transition: { duration: 0.8 } },
-  wiggle: { rotate: [0, -8, 7, -6, 4, 0], transition: { duration: 0.9 } },
+  // Hips sway; the picture never tilts.
+  wiggle: { x: [0, -4, 4, -3, 3, 0], scaleX: [1, 1.04, 1.04, 1.02, 1.02, 1], transition: { duration: 0.9 } },
   giggle: { y: [0, -3, 0, -3, 0], transition: { duration: 0.8 } },
   hearts: { scale: [1, 1.08, 1], y: -4, transition: { duration: 0.6 } },
-  roll: { rotate: [0, -360], transition: { duration: 1.1, ease: "easeInOut" } },
+  // A spin on the spot: the sprite turn (squeeze edge-on, flip, back) with a float up.
+  roll: { scaleX: [1, 0.12, -1, 0.12, 1], y: [0, -6, -10, -6, 0], transition: { duration: 0.9, ease: "easeInOut" } },
   cheer: { y: [0, 3, -14, 0], transition: { duration: 0.8 } },
 };
 
@@ -160,6 +167,22 @@ export function AstroCat({
   heading?: 1 | -1;
 }) {
   const reduce = useReducedMotion();
+  const [phase, setPhase] = useState<"none" | "anticipate" | "land">("none");
+  const prevState = useRef(state);
+  useEffect(() => {
+    const was = prevState.current;
+    prevState.current = state;
+    if (state === "moving" && was !== "moving") {
+      setPhase("anticipate");
+      const t = setTimeout(() => setPhase("none"), 140);
+      return () => clearTimeout(t);
+    }
+    if (was === "moving" && state !== "moving") {
+      setPhase("land");
+      const t = setTimeout(() => setPhase("none"), 380);
+      return () => clearTimeout(t);
+    }
+  }, [state]);
   const look = lookAngle ?? (sleeping ? null : gazeAngle);
   const rad = look == null ? null : (look * Math.PI) / 180;
   const dx = rad == null ? 0 : Math.round(Math.cos(rad) * 4);
@@ -167,11 +190,19 @@ export function AstroCat({
   const asleep = sleeping && state === "idle" && !reaction;
   const happy = reaction === "giggle" || reaction === "hearts" || reaction === "wave" || reaction === "hi" || reaction === "cheer";
   const pointing = (state === "pointing" || state === "waiting" || state === "speaking") && lookAngle != null;
-  const flying = state === "moving";
+  const flying = state === "moving" && phase !== "anticipate";
+  const faceTurn = flying ? heading * 4 : look == null ? 0 : Math.round(Math.cos((look * Math.PI) / 180) * 2);
 
   const body = useMemo<TargetAndTransition>(
-    () => (reduce ? REST : { ...REST, ...((reaction && REACTION_ANIM[reaction]) || BODY_FLOAT[state] || {}), ...(flying && !reaction ? { rotate: 14 * heading } : {}) }),
-    [reduce, reaction, state, flying, heading],
+    () =>
+      reduce
+        ? REST
+        : {
+            ...REST,
+            ...((reaction && state !== "moving" && REACTION_ANIM[reaction]) || BODY_FLOAT[state] || {}),
+            ...(phase === "anticipate" ? ANTICIPATE : phase === "land" ? LAND : {}),
+          },
+    [reduce, reaction, state, phase],
   );
 
   // Arms hang at 0°; a point rotates the arm on the target's side toward it.
@@ -224,7 +255,7 @@ export function AstroCat({
 
       <motion.g animate={body} style={{ transformOrigin: `60px ${FEET_Y - 20}px` }}>
         {/* tail swishes behind everything */}
-        <motion.g animate={reduce || asleep ? { rotate: -6 } : tailSwish(state, happy)} style={{ transformOrigin: `${(TAIL_COL + 1) * U}px ${(TAIL_ROW + 8) * U}px` }}>
+        <motion.g animate={reduce || asleep ? { rotate: -6 } : flying ? { rotate: [-heading * 20, -heading * 8, -heading * 20], transition: { duration: 0.6, repeat: Infinity, ease: "easeInOut" } } : tailSwish(state, happy)} style={{ transformOrigin: `${(TAIL_COL + 1) * U}px ${(TAIL_ROW + 8) * U}px` }}>
           <Cells rows={TAIL} col0={TAIL_COL} row0={TAIL_ROW} />
         </motion.g>
 
@@ -243,8 +274,8 @@ export function AstroCat({
         {LEGS.map(([col, row], i) => (
           <motion.g
             key={col}
-            animate={reduce ? {} : flying ? { y: -3, rotate: i ? -10 : 10 } : { y: [0, i ? -2 : 0, 0], rotate: 0 }}
-            transition={flying ? { type: "spring", stiffness: 200, damping: 14 } : { duration: 3, repeat: Infinity, ease: "easeInOut", delay: i * 0.6 }}
+            animate={reduce ? {} : flying ? { y: [-1, -5, -1], rotate: i ? [-6, 14, -6] : [6, -14, 6] } : phase === "land" ? { y: [-4, 1, 0], rotate: 0 } : { y: [0, i ? -2 : 0, 0], rotate: 0 }}
+            transition={flying ? { duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 } : phase === "land" ? { duration: 0.35 } : { duration: 3, repeat: Infinity, ease: "easeInOut", delay: i * 0.6 }}
             style={{ transformOrigin: `${(col + 2) * U}px ${row * U}px` }}
           >
             <Cells rows={LEG} col0={col} row0={row} />
@@ -264,8 +295,12 @@ export function AstroCat({
           transition={{ duration: state === "thinking" ? 0.7 : 2.4, repeat: Infinity }}
         />
 
-        {/* head */}
+        {/* head: tilts as a part, and trails the body a beat late (follow-through) */}
         <motion.g animate={reduce ? {} : headTilt} style={{ transformOrigin: `60px ${11 * U}px` }}>
+         <motion.g
+          animate={reduce ? {} : flying ? { y: [1, -1, 1, -1, 1] } : phase === "land" ? { y: [0, 3, -1, 0] } : { y: 0 }}
+          transition={flying ? { duration: 0.6, repeat: Infinity, ease: "easeInOut", delay: 0.08 } : { duration: 0.4 }}
+         >
           {/* ears twitch on their own */}
           <motion.g animate={reduce ? {} : { rotate: [0, 0, -14, 0, 0] }} transition={{ duration: 5, repeat: Infinity, times: [0, 0.7, 0.75, 0.8, 1] }} style={{ transformOrigin: `${5 * U}px ${3 * U}px` }}>
             <Cells rows={EAR_L} col0={4} row0={0} />
@@ -289,8 +324,12 @@ export function AstroCat({
           {[4 * U, 14 * U].map((x) => (
             <rect key={x} x={x} y={8 * U + 2} width={2 * U} height={3} fill="#f58fb0" opacity={happy || state === "celebrating" ? 0.95 : 0.5} />
           ))}
-          <CatEyes mood={asleep ? "sleep" : happy || state === "celebrating" || state === "hover" ? "happy" : state} dx={dx} dy={dy} />
-          <CatMouth state={asleep ? "sleep" : state} happy={happy} />
+          {/* face turn: features slide toward where it's heading, so the head reads as turning */}
+          <motion.g animate={{ x: faceTurn }} transition={{ type: "spring", stiffness: 180, damping: 16 }}>
+            <CatEyes mood={asleep ? "sleep" : happy || state === "celebrating" || state === "hover" ? "happy" : state} dx={dx} dy={dy} idleGlance={!reduce && state === "idle" && look == null && !asleep} />
+            <CatMouth state={asleep ? "sleep" : state} happy={happy} />
+          </motion.g>
+         </motion.g>
         </motion.g>
 
         {/* arms rotate at the shoulder: point, wave, swim, think */}
@@ -375,7 +414,7 @@ export function AstroCat({
 }
 
 /** Big anime-style eyes (3x3 cells) with a pupil that tracks, two catch-lights, and blinking. */
-function CatEyes({ mood, dx, dy }: { mood: string; dx: number; dy: number }) {
+function CatEyes({ mood, dx, dy, idleGlance = false }: { mood: string; dx: number; dy: number; idleGlance?: boolean }) {
   if (mood === "sleep") {
     return (
       <g fill="#0b1a2e">
@@ -410,7 +449,7 @@ function CatEyes({ mood, dx, dy }: { mood: string; dx: number; dy: number }) {
         >
           <rect x={x} y={EYE_Y + squint} width={3 * U} height={3 * U - squint} fill="#0b1a2e" />
           <rect x={x + 2} y={EYE_Y + 2 + squint} width={3 * U - 4} height={3 * U - 4 - squint} fill="#3fd49b" />
-          <motion.rect x={x + 5} y={EYE_Y + 5 + squint / 2} width={8} height={9 - squint / 2} fill="#0b1a2e" animate={{ x: dx, y: dy }} transition={{ type: "spring", stiffness: 200, damping: 18 }} />
+          <motion.rect x={x + 5} y={EYE_Y + 5 + squint / 2} width={8} height={9 - squint / 2} fill="#0b1a2e" animate={idleGlance ? { x: [0, 0, -3, -3, 0, 0, 3, 3, 0], y: [0, 0, 0, -1, 0, 0, 0, 1, 0] } : { x: dx, y: dy }} transition={idleGlance ? { duration: 9, repeat: Infinity, ease: "easeInOut" } : { type: "spring", stiffness: 200, damping: 18 }} />
           <rect x={x + 3} y={EYE_Y + 3 + squint} width={4} height={4} fill="#ffffff" />
           <rect x={x + 12} y={EYE_Y + 12} width={2} height={2} fill="#ffffff" />
         </motion.g>
