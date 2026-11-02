@@ -99,7 +99,23 @@ Typed fields: ${JSON.stringify(input.fields)}
 Always finish with companion_respond.`;
 }
 
+/** An explicit request to go somewhere or do something, as opposed to a question. */
+const ACTION_REQUEST = /\b(help me|guide me|walk me through|take me|go to|open|show me how to|i want to|let'?s|swap|trade|buy|sell|place)\b/i;
+
+/**
+ * On the docs page a question is answered in place: the pet stays with the article the user is
+ * reading instead of starting a walkthrough that navigates away. Explicit actions still can.
+ */
+export function keepOnDocs(input: Pick<TurnInput, "page" | "utterance">, reply: CompanionReply): CompanionReply {
+  if (input.page !== "titan_docs" || ACTION_REQUEST.test(input.utterance) || !reply.workflow) return reply;
+  return { ...reply, workflow: undefined, point: { target: "titan-docs-reading-pane" } as CompanionReply["point"] };
+}
+
 export async function runTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {
+  return keepOnDocs(input, await answerTurn(input, provider));
+}
+
+async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {
   if (!provider) return planWithRules(input.utterance, { page: input.page, runTool: callTool });
 
   const toolCalls: CompanionReply["toolCalls"] = [];
