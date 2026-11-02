@@ -24,22 +24,22 @@ export const TITAN_DOCS = {
     argos: {
       name: "Argos Off-Chain Optimization Engine",
       summary:
-        "Argos analyzes hundreds of liquidity pools across Raydium, Orca Whirlpools, Phoenix, Meteora, and OpenBook to find the mathematically optimal multi-hop trade path with zero frontrunning risk.",
+        "Argos is Titan's own off-chain, optimisation-based routing algorithm: it plans how to split a trade across routes before it is sent.",
     },
     dart: {
-      name: "DART (Dynamic Adaptive Routing Technology)",
+      name: "DART (Dynamic Allocation and Real Time)",
       summary:
-        "DART continuously re-allocates trade chunks on-chain at execution time. If pool liquidity or pricing changes while your transaction is in flight, DART dynamically shifts trade volume to the best available pool, preventing slippage loss.",
+        "DART is an on-chain router that can re-split a trade across pools at execution time. Modes: Auto (Argos + DART, recommended), Only and Off. Works on listed pairs such as SOL/USDC, SOL/USDT, USDT/USDC and cbBTC/USDC; up to 1 bps fee.",
     },
     prime: {
       name: "Titan Prime Mode",
       summary:
-        "Prime provides 0% protocol fee execution, MEV sandwich protection via private relays (Nozomi/Jito), and exclusive access to private market-maker liquidity.",
+        "Prime sets slippage and transaction landing automatically, includes sandwich protection, and has zero Titan fees. Manual mode instead exposes Max Slippage (Base Tokens and Stable/LST) and Priority Fees or MEV Protect (Jito + Nozomi), each Auto or Custom.",
     },
     limitOrders: {
       name: "Titan Limit Orders",
       summary:
-        "On-chain limit orders that require a minimum order notional of $10. Filled directly by automated market makers with partial fill support and no gas cost until execution.",
+        "On-chain limit orders filled by market makers with partial fills. Minimum $10 notional, 10 bps fee, a limit price worse than market is not allowed, expiry Custom/7D/1D/1H/Never, open orders can be cancelled.",
     },
     slippage: {
       name: "Max Slippage & Price Impact",

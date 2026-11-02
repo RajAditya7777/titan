@@ -26,6 +26,7 @@ export const BRIDGE_TOOLS = [
   "titan_explain_limit_orders",
   "titan_diagnose_error",
   "titan_get_documentation",
+  "titan_faq",
 ] as const;
 
 export const BROWSER_CALLABLE_TOOLS = [

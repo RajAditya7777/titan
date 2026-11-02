@@ -136,3 +136,18 @@ test("a guide obeys 'stop' and the page survives", async ({ page }) => {
   await expect(page.getByText("This page couldn’t load")).toHaveCount(0);
   await expect(page.getByTestId("companion-pet")).toBeVisible();
 });
+
+test("a new user's top question gets a real answer about how Titan differs", async ({ page }) => {
+  await openCompanion(page);
+  await ask(page, "How is Titan different from other DEXs?");
+  await expect(page.getByTestId("companion-panel")).toContainText(/aggregat/i, { timeout: 45_000 });
+});
+
+test("'I'm new' starts the first-swap walkthrough", async ({ page }) => {
+  await openCompanion(page);
+  await ask(page, "I'm new. Show me how Titan works");
+  await expect(page.getByTestId("guidance-bar")).toContainText("Your first swap on Titan", { timeout: 45_000 });
+  await expect(bubble(page)).toContainText("connect a Solana wallet", { timeout: 60_000 });
+  await page.getByTestId("guide-stop").click();
+  await expect(page.getByTestId("guidance-bar")).toHaveCount(0);
+});

@@ -18,6 +18,7 @@ export const WORKFLOW_IDS = [
   "explain_apy",
   "titan_swap",
   "titan_limit",
+  "titan_tour",
   "umbra_register",
   "umbra_deposit",
   "umbra_private_send",
@@ -169,6 +170,9 @@ export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}): Work
         amount: params.amount,
         outputToken: params.tokenSymbol,
       });
+
+    case "titan_tour":
+      return planTitanGoal("tour");
 
     case "titan_limit":
       return planTitanGoal("limit_order", {

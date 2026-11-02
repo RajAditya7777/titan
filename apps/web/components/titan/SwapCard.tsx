@@ -157,6 +157,7 @@ export function SwapCard() {
             {/* Depth/Chart Icon */}
             <button
               type="button"
+              data-companion="titan-settings-toggle"
               onClick={() => setSettingsOpen(true)}
               className="p-1.5 text-[#8a8a8a] hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
               title="Trade Settings"

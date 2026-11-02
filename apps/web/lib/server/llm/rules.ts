@@ -4,6 +4,24 @@ import { extractNumber, normalise } from "@/lib/companion/commands";
 import type { CompanionReply } from "@/lib/companion/actions";
 import { matchUmbraRules } from "@/lib/products/umbra/rules";
 import { getUmbraAppState } from "@/lib/products/umbra/state";
+import { matchFaqTopic, type FaqTopic } from "@companion/titan-mcp";
+import { TITAN_GITBOOK_DOCS } from "@/lib/products/titan/gitbook-content";
+
+/** Where the pet points while answering each common question (all tagged on the swap page). */
+const FAQ_POINT: Partial<Record<FaqTopic, ElementId>> = {
+  different: "titan-rate-display",
+  getting_started: "titan-connect-wallet",
+  fees: "titan-prime-toggle",
+  fewer_tokens: "titan-rate-display",
+  swap_failed: "titan-refresh-quote",
+  sandwich: "titan-prime-toggle",
+  prime_vs_manual: "titan-prime-toggle",
+  dart: "titan-dart-selector",
+  slippage: "titan-settings-toggle",
+  limit_orders: "titan-nav-limit",
+};
+const NEW_USER = /\b(i'?m new|new here|new to titan|first time|show me (how titan works|around)|how does titan work|tour)\b/i;
+const WANTS_ACTION = /\b(help me|guide me|walk me through|i want to|let'?s|can you|show me how to)\b|\d/i;
 
 /**
  * Offline intent planner. Runs when no LLM is configured, or when the LLM call fails, so the
@@ -31,6 +49,45 @@ export async function planWithRules(utterance: string, ctx: Ctx): Promise<Compan
   return { ...reply, needsClarification: reply.needsClarification ?? false, toolCalls: calls, engine: "rules" };
 }
 
+function matchDocsQuestion(text: string): { speech: string; sectionId: string } | null {
+  const t = text.toLowerCase().trim();
+  for (const [key, section] of Object.entries(TITAN_GITBOOK_DOCS)) {
+    for (const q of section.suggestedQuestions) {
+      if (t.includes(q.toLowerCase()) || q.toLowerCase().includes(t)) {
+        return {
+          speech: `${section.summary} ${section.content.overview.slice(0, 240)}...`,
+          sectionId: key,
+        };
+      }
+    }
+  }
+  if (/\b(argos|convex optimization|continuous optimization)\b/i.test(t)) {
+    const s = TITAN_GITBOOK_DOCS["argos-algorithm"];
+    if (s) return { speech: `${s.summary} ${s.content.overview}`, sectionId: "argos-algorithm" };
+  }
+  if (/\b(dart|dynamic automated routing|dynamic allocation)\b/i.test(t)) {
+    const s = TITAN_GITBOOK_DOCS["dart-routing"];
+    if (s) return { speech: `${s.summary} ${s.content.overview}`, sectionId: "dart-routing" };
+  }
+  if (/\b(api|rest api|quote endpoint|swap endpoint)\b/i.test(t)) {
+    const s = TITAN_GITBOOK_DOCS["api-overview"];
+    if (s) return { speech: `${s.summary} ${s.content.overview}`, sectionId: "api-overview" };
+  }
+  if (/\b(sdk|typescript sdk|npm install)\b/i.test(t)) {
+    const s = TITAN_GITBOOK_DOCS["sdk"];
+    if (s) return { speech: `${s.summary} ${s.content.overview}`, sectionId: "sdk" };
+  }
+  if (/\b(private swap|nozomi|mev protection|sandwich protection)\b/i.test(t)) {
+    const s = TITAN_GITBOOK_DOCS["private-swaps"];
+    if (s) return { speech: `${s.summary} ${s.content.overview}`, sectionId: "private-swaps" };
+  }
+  if (/\b(gitbook|documentation|docs|guide)\b/i.test(t)) {
+    const s = TITAN_GITBOOK_DOCS["welcome"];
+    if (s) return { speech: `${s.summary} You can explore all Titan documentation, Argos math, and developer APIs in the GitBook docs tab.`, sectionId: "welcome" };
+  }
+  return null;
+}
+
 async function route(text: string, ctx: Ctx): Promise<Reply> {
   // 1. Umbra / Nimbus Routing
   if (ctx.page === "umbra" || /\b(umbra|nimbus|shield|unshield|stealth|private send|private transfer|confidential)\b/i.test(text)) {
@@ -55,6 +112,31 @@ async function route(text: string, ctx: Ctx): Promise<Reply> {
     ctx.page === "home" ||
     /\b(titan|swap|trade|buy|sell|quote|slippage|price impact|dart|argos|prime|limit order|conditional order)\b/i.test(text)
   ) {
+    // A new user gets the real first-swap walkthrough.
+    if (NEW_USER.test(text)) {
+      return { speech: "Welcome! I'll walk you through a first swap on Titan, step by step.", workflow: buildWorkflow("titan_tour") };
+    }
+    // "Help me swap 1 SOL" / "help me place a limit order" are actions, not questions.
+    if (WANTS_ACTION.test(text) && /\blimit\b/i.test(text)) {
+      return { speech: "Let's set up a limit order together.", workflow: buildWorkflow("titan_limit") };
+    }
+    if (WANTS_ACTION.test(text) && /\b(swap|trade|exchange|convert|buy|sell)\b/i.test(text)) {
+      const amt = extractAmount(text);
+      return {
+        speech: amt ? `I'll guide you through swapping ${amt}.` : "I'll guide you through a swap on Titan.",
+        workflow: buildWorkflow("titan_swap", { amount: amt }),
+      };
+    }
+    // The questions new users ask most, answered from verified docs (titan_faq).
+    const topic = matchFaqTopic(text);
+    if (topic) {
+      const r = await ctx.runTool("titan_faq", { topic });
+      if (r.ok && r.data?.answer) {
+        const target = FAQ_POINT[topic];
+        return target && ctx.page === "titan_swap" ? { speech: r.data.answer, point: { target, say: r.data.answer } } : { speech: r.data.answer };
+      }
+    }
+
     if (/\b(slippage|price impact)\b/i.test(text)) {
       const r = await ctx.runTool("titan_explain_slippage", { tokenType: "volatile" });
       const speech = r.ok && r.data?.explanation
@@ -101,6 +183,15 @@ async function route(text: string, ctx: Ctx): Promise<Reply> {
       if (r.ok && r.data?.possibleCause) {
         return { speech: `${r.data.possibleCause} Recommended fix: ${r.data.suggestedAction}` };
       }
+    }
+
+    // GitBook Documentation & Technical Knowledge
+    const docAnswer = matchDocsQuestion(text);
+    if (docAnswer) {
+      const isDocsPage = ctx.page === "titan_docs" || ctx.page === "titan_learn";
+      return isDocsPage
+        ? { speech: docAnswer.speech, point: { target: "titan-docs-reading-pane", say: "Here is the documentation breakdown." } }
+        : { speech: docAnswer.speech };
     }
   }
 

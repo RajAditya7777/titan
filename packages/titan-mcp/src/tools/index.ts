@@ -1,6 +1,7 @@
 import { defineTool, ok, fail } from "@companion/mcp-kit";
 import { z } from "zod";
 import { TITAN_DOCS } from "../knowledge/docs";
+import { FAQ_TOPICS, TITAN_FAQ, matchFaqTopic } from "../knowledge/faq";
 
 export const titanGetQuote = defineTool({
   name: "titan_get_quote",
@@ -215,7 +216,28 @@ export const titanGetDocumentation = defineTool({
   },
 });
 
+export const titanFaq = defineTool({
+  name: "titan_faq",
+  title: "Answer a Common Titan Question",
+  description:
+    "Answers the questions new Titan users ask most (how Titan differs from other DEXs, fees, fewer tokens than quoted, failed swaps, sandwich protection, Prime vs Manual, DART/Argos, slippage, limit orders, private swaps), from verified docs. Pass the user's question or a topic.",
+  inputSchema: {
+    question: z.string().optional().describe("The user's question, in their words"),
+    topic: z.enum(FAQ_TOPICS).optional().describe("A known topic, if already identified"),
+  },
+  readOnly: true,
+  handler: async (input) => {
+    const topic = input.topic ?? (input.question ? matchFaqTopic(input.question) : null);
+    if (!topic) {
+      return ok({ matched: false, topics: FAQ_TOPICS.map((t) => ({ topic: t, question: TITAN_FAQ[t].question })) }, "static-docs", [TITAN_DOCS.officialLinks.docs]);
+    }
+    const { question, answer } = TITAN_FAQ[topic];
+    return ok({ matched: true, topic, question, answer }, "static-docs", [TITAN_DOCS.officialLinks.docs]);
+  },
+});
+
 export const ALL_TITAN_TOOLS = [
+  titanFaq,
   titanGetQuote,
   titanExplainQuote,
   titanExplainSlippage,

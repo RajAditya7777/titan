@@ -149,48 +149,64 @@ export function planTitanGoal(goal: TitanGoal, params: TitanPlanParams = {}): Wo
     }
 
     case "tour": {
+      // A new user's first swap, in the order they meet things on the page. Facts: RESEARCH_TITAN_UMBRA.md.
       return {
         id: "titan_tour",
-        title: "Titan Exchange Guided Tour",
+        title: "Your first swap on Titan",
         steps: [
           {
             type: "navigate_to_page",
             page: "titan_swap",
-            say: "Welcome to Titan Exchange! Let me show you around the meta-aggregator.",
+            say: "Welcome to Titan. It's a meta-aggregator: it compares quotes from several aggregators and market makers and sends your trade to the best one. Here's how a first swap works.",
           },
           {
             type: "point",
-            target: "titan-prime-toggle" as any,
-            say: "This is Prime Mode: zero protocol fees and automatic MEV sandwich protection.",
-          },
-          {
-            type: "point",
-            target: "titan-dart-selector" as any,
-            say: "DART (Dynamic Allocation and Real Time) re-allocates trades across pools at the exact moment of execution on Solana.",
+            target: "titan-connect-wallet" as any,
+            say: "First, connect a Solana wallet with a little SOL for network fees. In this demo the wallet is simulated.",
           },
           {
             type: "point",
             target: "titan-sell-card" as any,
-            say: "Choose any token and amount to sell. You can use 50% or Max buttons for quick sizing.",
+            say: "Pick the token you're selling and type the amount. Only the sell amount can be typed.",
           },
           {
             type: "point",
-            target: "titan-route-summary" as any,
-            say: "The route details show which DEXes Argos routed through and your exact price impact.",
+            target: "titan-buy-token-select" as any,
+            say: "Then pick the token you want to receive.",
+          },
+          {
+            type: "point",
+            target: "titan-rate-display" as any,
+            say: "Check the rate. Quotes refresh every second, and you can receive a little less because of price impact and slippage.",
+          },
+          {
+            type: "point",
+            target: "titan-prime-toggle" as any,
+            say: "Prime is the easy mode: it sets slippage for you, adds sandwich protection, and has zero Titan fees.",
+          },
+          {
+            type: "point",
+            target: "titan-dart-selector" as any,
+            say: "DART on Auto lets Titan re-split your trade across pools as it executes. Auto is the recommended setting.",
+          },
+          {
+            type: "point",
+            target: "titan-settings-toggle" as any,
+            say: "If you turn Prime off, this is where you set max slippage and MEV protection yourself.",
+          },
+          {
+            type: "point",
+            target: "titan-swap-review" as any,
+            say: "When you're ready, Review shows the details. You approve every trade in your own wallet. I never do.",
           },
           {
             type: "navigate_to_page",
             page: "titan_limit",
-            say: "Here is the Limit Order view. Titan lets you place on-chain orders with a $10 minimum.",
-          },
-          {
-            type: "navigate_to_page",
-            page: "titan_learn",
-            say: "Finally, our Learn section explains DART, Argos, and MEV protection in depth.",
+            say: "Want a specific price? Limit orders trade only at your price or better, with a 10 dollar minimum.",
           },
           {
             type: "celebrate",
-            say: "Tour complete! Feel free to ask me questions like 'what is DART' or 'help me swap 1 SOL'.",
+            say: "That's the basics. Ask me anything, like 'why did I get fewer tokens' or 'help me swap 1 SOL'.",
           },
         ],
       };

@@ -6,6 +6,7 @@ import { WORKFLOW_IDS, buildWorkflow } from "@/lib/companion/workflows";
 import { callTool, listTools } from "../mcp-client";
 import type { ChatMessage, FunctionTool, LlmProvider } from "./provider";
 import { planWithRules } from "./rules";
+import { getTitanPromptFragment } from "@/lib/products/titan/prompt";
 
 /**
  * One user turn: utterance + page context → LLM (with MCP tools) → validated CompanionReply.
@@ -85,16 +86,11 @@ Always finish with companion_respond.`;
   }
 
   // Primary: Titan Exchange
-  return `You are Milo, a faithful, friendly, expert 3D puppy companion guide for Titan Exchange (titan.exchange on Solana).
-Speak warmly, faithfully, and concisely (1–3 short sentences, plain words, no markdown, no URLs).
-You are an expert on Titan Exchange:
-- Swap execution, token pairs (SOL, USDC, HYPE, PUMP, ZEC, cbBTC, ETH, TRUMP, etc.)
-- Argos off-chain multi-hop route optimization
-- DART (Dynamic Automated Routing Technology) split rebalancing
-- Titan Prime tier (0% protocol trading fees, automatic MEV sandwich protection)
-- Slippage settings (base volatile vs stable/LST) and price impact
-- Limit orders ($10 minimum notional, conditional orders)
+  return `You are Milo, a small pixel fox guiding users through Titan Exchange (titan.exchange on Solana).
+Speak in plain, clear English: 1-3 short sentences, no markdown, no URLs, no hype.
+${getTitanPromptFragment()}
 Never sign, approve, or submit transactions; you only guide and point at elements, the user remains in complete control and approves in their own wallet.
+If the user is new or asks how Titan works / for a tour, use workflow_id: "titan_tour".
 If user wants to swap, use workflow_id: "titan_swap", with workflow_params: { amount, tokenSymbol }.
 If user wants a limit order, use workflow_id: "titan_limit".
 Page: ${input.page}. Here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}

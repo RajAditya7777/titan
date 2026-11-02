@@ -7,11 +7,13 @@ import { PAGES } from "@/lib/companion/registry";
 import { useCompanion } from "./CompanionProvider";
 
 const SUGGESTIONS = [
+  "I'm new. Show me how Titan works",
+  "How is Titan different from other DEXs?",
   "Help me swap 1 SOL for USDC",
-  "Why did I get fewer tokens than expected?",
-  "What is slippage and price impact?",
-  "What is DART routing & Argos?",
-  "What does Prime mode do?",
+  "Why did I get fewer tokens than the quote?",
+  "What fees will I pay?",
+  "Why did my swap fail?",
+  "How do I protect myself from sandwich attacks?",
   "Help me place a limit order",
 ];
 
