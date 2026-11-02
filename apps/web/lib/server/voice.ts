@@ -35,13 +35,15 @@ export function voiceConfigFromEnv(env = process.env): VoiceConfig | null {
  * Which text-to-speech engine serves /api/tts:
  * - "provider": an OpenAI-compatible speech API (needs TTS_MODEL and a key);
  * - "kokoro": the local open-source model (default: no key, no per-request cost);
+ * - "say": macOS's built-in voice (fast, local; macOS only);
  * - null: off, the browser speaks with its own voice.
  */
-export type TtsEngine = "provider" | "kokoro" | null;
+export type TtsEngine = "provider" | "kokoro" | "say" | null;
 
 export function ttsEngineFromEnv(env = process.env): TtsEngine {
   const choice = env.TTS_ENGINE || (env.TTS_MODEL ? "provider" : "kokoro");
   if (choice === "off") return null;
+  if (choice === "say") return "say";
   if (choice === "provider") return voiceConfigFromEnv(env)?.ttsModel ? "provider" : null;
   return "kokoro";
 }

@@ -128,7 +128,17 @@ export class BrowserTextToSpeech implements TextToSpeech {
   readonly supported = typeof window !== "undefined" && "speechSynthesis" in window;
   private current: SpeechSynthesisUtterance | null = null;
   private resolveCurrent: (() => void) | null = null;
+  /** getVoices() is empty until the browser loads its list; only trust "no voices" after that. */
+  private voicesChecked = false;
   muted = false;
+
+  constructor() {
+    if (!this.supported) return;
+    const mark = () => (this.voicesChecked = true);
+    window.speechSynthesis.addEventListener?.("voiceschanged", mark);
+    // Browsers with voices fire voiceschanged quickly; ones without never do.
+    setTimeout(mark, 1_500);
+  }
 
   get speaking() {
     return this.current !== null;
@@ -147,8 +157,10 @@ export class BrowserTextToSpeech implements TextToSpeech {
 
   speak(text: string, hooks: { onBoundary?: () => void } = {}): Promise<void> {
     this.cancel();
-    // Muted or unsupported: still "take time", so captions remain readable and pacing holds.
-    if (!this.supported || this.muted) {
+    // Muted, unsupported, or a browser with no voices installed (embedded previews), where speak()
+    // would stay silent and never end: still "take time", so captions stay readable and pacing holds.
+    const voiceless = this.supported && window.speechSynthesis.getVoices().length === 0 && this.voicesChecked;
+    if (!this.supported || this.muted || voiceless) {
       return new Promise((resolve) => {
         const ms = Math.min(9_000, 900 + text.split(/\s+/).length * 230);
         const timer = setTimeout(resolve, ms);

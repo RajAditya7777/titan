@@ -3,6 +3,7 @@ import { z } from "zod";
 import { clientKey, limiter, tooMany } from "@/lib/server/rate-limit";
 import { kokoro, kokoroConfigFromEnv, speechText, TtsBusyError } from "@/lib/server/tts/kokoro";
 import { synthesize, ttsEngineFromEnv, voiceConfigFromEnv, VoiceProviderError } from "@/lib/server/voice";
+import { sayToWav } from "@/lib/server/tts/macos-say";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,11 @@ export async function POST(req: Request) {
 
   const started = Date.now();
   try {
+    if (engine === "say") {
+      const wav = await sayToWav(speechText(parsed.data.text));
+      console.info(`[voice] tts say ${parsed.data.text.length} chars ${Date.now() - started}ms`);
+      return new Response(new Uint8Array(wav), { headers: { "content-type": "audio/wav", "cache-control": "no-store" } });
+    }
     if (engine === "kokoro") {
       const wav = await kokoro.synth(speechText(parsed.data.text), kokoroConfigFromEnv());
       console.info(`[voice] tts kokoro ${parsed.data.text.length} chars ${Date.now() - started}ms`);

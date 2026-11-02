@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { homePosition, placePet, type Placement, type Rect } from "@/lib/companion/positioning";
 import { Pet, REACTIONS, type Reaction } from "./Pet";
 import { useMicLevel } from "@/lib/companion/mic-level";
@@ -23,7 +24,7 @@ const WALK_PX_PER_SEC = 340;
 export function PetLayer() {
   const pathname = usePathname();
   if (pathname === "/titan/demo") return null;
-  const { page, petState, target, bubble, panelOpen, setPanelOpen, run, voice } = useCompanion();
+  const { page, petState, target, bubble, panelOpen, setPanelOpen, run, voice, guide: guideApi } = useCompanion();
   const [viewport, setViewport] = useState({ width: 1280, height: 800 });
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
   const [hover, setHover] = useState(false);
@@ -344,6 +345,13 @@ export function PetLayer() {
             transition={{ type: "spring", stiffness: 260, damping: 26 }}
           >
             <BubbleText text={bubble} />
+            <BubbleControls
+              canBack={!!run && run.index > 0 && run.status !== "done"}
+              onBack={guideApi.back}
+              // In a walkthrough Next moves on; on a one-off explanation it means "got it".
+              onNext={run && run.status !== "done" ? guideApi.completeStep : guideApi.cancel}
+              onClose={guideApi.cancel}
+            />
             <BubbleTail
               side={beside ? (bubbleX > pos.x ? "left" : "right") : bubbleAbove ? "bottom" : "top"}
               offset={beside ? undefined : Math.max(18, Math.min(bubbleWidth - 18, pos.x + PET.width / 2 - bubbleX))}
@@ -506,4 +514,22 @@ function BubbleTail({ side, offset }: { side: "top" | "bottom" | "left" | "right
               borderTop: EDGE,
             };
   return <span aria-hidden className={base} style={pos} />;
+}
+
+/** Back, Next and close on every bubble, so the user can always steer or dismiss the guide. */
+function BubbleControls({ canBack, onBack, onNext, onClose }: { canBack: boolean; onBack(): void; onNext(): void; onClose(): void }) {
+  const btn = "pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium transition";
+  return (
+    <div className="mt-2.5 flex items-center gap-1.5 border-t border-[var(--line)] pt-2.5">
+      <button type="button" onClick={onBack} disabled={!canBack} className={`${btn} border border-[var(--line-strong)] text-[var(--text)] hover:bg-[var(--surface-2)] disabled:opacity-35`}>
+        <ChevronLeft size={13} /> Back
+      </button>
+      <button type="button" onClick={onNext} className={`${btn} bg-[var(--accent)] text-[var(--on-accent)] hover:brightness-110`}>
+        Next <ChevronRight size={13} />
+      </button>
+      <button type="button" onClick={onClose} aria-label="Close guide" className={`${btn} ml-auto px-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]`}>
+        <X size={15} />
+      </button>
+    </div>
+  );
 }
