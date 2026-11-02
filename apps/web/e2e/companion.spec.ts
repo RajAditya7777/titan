@@ -40,6 +40,12 @@ test("MCP server is connected over stdio and exposes the Titan tools", async ({ 
 test("browser bridge refuses tools outside the read-only allow-list", async ({ request }) => {
   const res = await request.post("/api/mcp", { data: { tool: "titan_sign_and_send", args: {} } });
   expect(res.status()).toBe(400);
+  // Only the LLM is live: the old live Reflect API is not reachable from the browser any more.
+  const live = await request.post("/api/mcp", { data: { tool: "reflect_get_protocol_stats", args: {} } });
+  expect(live.status()).toBe(400);
+  // Swap quotes come from the offline Titan tool.
+  const quote = await request.post("/api/mcp", { data: { tool: "titan_get_quote", args: { inputToken: "SOL", outputToken: "USDC", amount: "1" } } });
+  expect(quote.status()).toBe(200);
 });
 
 test("the pet persists across client-side navigation", async ({ page }) => {

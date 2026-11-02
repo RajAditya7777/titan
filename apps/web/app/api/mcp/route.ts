@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { clientKey, limiter, tooMany } from "@/lib/server/rate-limit";
-import { BROWSER_CALLABLE_TOOLS } from "@/lib/companion/actions";
+import { BRIDGE_TOOLS } from "@/lib/companion/actions";
 import { callTool, listTools } from "@/lib/server/mcp-client";
 
 export const runtime = "nodejs";
 
-/** Browser → MCP bridge, restricted to an allow-list of read-only tools. */
+/** Browser → MCP bridge, restricted to the offline, read-only Titan tools. */
 const Body = z.object({
-  tool: z.enum(BROWSER_CALLABLE_TOOLS),
+  tool: z.enum(BRIDGE_TOOLS),
   args: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).default({}),
 });
 

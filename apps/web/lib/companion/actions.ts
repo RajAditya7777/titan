@@ -12,6 +12,22 @@ const Page = z.enum(PAGE_IDS as [string, ...string[]]);
 const Say = z.string().min(1).max(400);
 
 /** Read-only MCP tools the browser may trigger during a workflow. */
+/**
+ * What the browser bridge (/api/mcp) may call. Only the Titan tools, which are offline: quotes come
+ * from a fixed formula and docs are built in. Only the LLM is live (D-011), so no browser request
+ * can reach a live market API.
+ */
+export const BRIDGE_TOOLS = [
+  "titan_get_quote",
+  "titan_explain_quote",
+  "titan_explain_slippage",
+  "titan_explain_routing",
+  "titan_explain_prime",
+  "titan_explain_limit_orders",
+  "titan_diagnose_error",
+  "titan_get_documentation",
+] as const;
+
 export const BROWSER_CALLABLE_TOOLS = [
   "reflect_get_stablecoin_overview",
   "reflect_get_mint_quote",

@@ -47,3 +47,9 @@ editing an old one; mark superseded entries.
 ## D-010 Engine refactor before product work
 - **Decision:** Split `CompanionProvider.tsx` (818 lines) into `useVoice`, `useGuideRunner`, `useFieldRegistry` and a thin provider before touching products.
 - **Why:** Phases 3–6 all edit this file; splitting it first lowers the merge and regression risk for the coding agent.
+
+## D-011 Only the LLM is live; all Titan data is hardcoded
+- **Context:** The owner wants a demo that never depends on, or touches, a live market or wallet. Supersedes the "live Titan Portal quote when `TITAN_API_KEY` is set" part of `MIGRATION_PLAN.md` and D-007.
+- **Decision:** Swap quotes, token prices, routes, the wallet and approvals are hardcoded or computed from fixed data (`lib/products/titan/*`, `packages/titan-mcp`). The only network calls are the LLM and its voice services. The browser bridge `/api/mcp` accepts only the offline `titan_*` tools (`BRIDGE_TOOLS`); the old live Reflect tools are refused.
+- **Why:** Deterministic demos (the same input always gives the same quote), no API keys or rate limits for market data, and no route by which the app could reach real funds.
+- **Consequences:** Every number on screen is simulated and must stay labelled as such. Adding a live data source means a new decision entry, not a quiet code change. The e2e suite asserts the Reflect tools are refused.
