@@ -9,6 +9,8 @@ import { useCompanion } from "./CompanionProvider";
 import { respondTo, type PageEvent } from "@/lib/companion/page-reactions";
 
 const PET = { width: 88, height: 88 };
+/** Walking pace across the screen: brisk for a small pet, slow enough to see the steps. */
+const WALK_PX_PER_SEC = 340;
 
 /**
  * Renders the pet, spotlight and speech bubble in a fixed overlay above the app.
@@ -34,7 +36,7 @@ export function PetLayer() {
   /** When roaming, the x it wandered to along the bottom; null = home. */
   const [roamX, setRoamX] = useState<number | null>(null);
   const [travelling, setTravelling] = useState(false);
-  const [facing, setFacing] = useState<1 | -1>(1);
+  const [heading, setHeading] = useState<1 | -1>(1);
   // Latest values for listeners and timers registered once.
   const live = useRef({
     busy: false,
@@ -240,18 +242,25 @@ export function PetLayer() {
   const home = homePosition(viewport, PET);
   const pos = placement ?? (roamX != null ? { x: roamX, y: home.y } : home);
 
-  // Walking: legs trot and the pet faces where it is going, then turns back to the user on arrival.
+  // Walking like a character, not a sliding picture: it covers ground at a steady pace (so the trip
+  // takes as long as the distance needs) and its legs, arms and stride bounce run for exactly that
+  // long. A spring glide (fast start, long slide) with legs on a fixed timer read as an image moving.
   const prevPos = useRef(pos);
   const travelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const dist = Math.hypot(pos.x - prevPos.current.x, pos.y - prevPos.current.y);
+  const walkSecs = Math.min(2.4, Math.max(0.5, dist / WALK_PX_PER_SEC));
+  const walkTransition = useRef<object>({ type: "spring", stiffness: 300, damping: 30 });
+  if (dist >= 24) walkTransition.current = { duration: walkSecs, ease: [0.45, 0, 0.55, 1] };
+  else if (dist > 0) walkTransition.current = { type: "spring", stiffness: 300, damping: 30 }; // small nudges (scroll tracking)
   useEffect(() => {
     const dx = pos.x - prevPos.current.x;
-    const dy = pos.y - prevPos.current.y;
+    const d = Math.hypot(dx, pos.y - prevPos.current.y);
     prevPos.current = { x: pos.x, y: pos.y };
-    if (Math.hypot(dx, dy) < 24) return;
-    if (Math.abs(dx) > 4) setFacing(dx < 0 ? -1 : 1);
+    if (d < 24) return;
+    if (Math.abs(dx) > 4) setHeading(dx < 0 ? -1 : 1);
     setTravelling(true);
     clearTimeout(travelTimer.current);
-    travelTimer.current = setTimeout(() => setTravelling(false), 750);
+    travelTimer.current = setTimeout(() => setTravelling(false), Math.min(2.4, Math.max(0.5, d / WALK_PX_PER_SEC)) * 1000);
   }, [pos.x, pos.y]);
 
   const shownState =
@@ -277,7 +286,7 @@ export function PetLayer() {
   const bubbleShift = beside ? "-50%" : bubbleAbove ? "-100%" : "0%";
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[60]" aria-live="polite">
+    <div className="titan-ui pointer-events-none fixed inset-0 z-[60]" aria-live="polite">
       {/* Spotlight */}
       <AnimatePresence>
         {targetRect && (
@@ -302,7 +311,7 @@ export function PetLayer() {
               animate={{ opacity: [0.9, 0.35, 0.9], scale: [1, 1.025, 1] }}
               transition={{ duration: 1.8, repeat: Infinity }}
               style={{
-                boxShadow: "0 0 0 4px rgba(59, 139, 234, 0.18), 0 0 28px 4px rgba(59, 139, 234, 0.35)",
+                boxShadow: "0 0 0 4px rgba(242, 211, 99, 0.18), 0 0 28px 4px rgba(242, 211, 99, 0.35)",
               }}
             />
           </motion.div>
@@ -316,7 +325,7 @@ export function PetLayer() {
           <motion.div
             key="bubble"
             role="status"
-            className="absolute rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[13.5px] leading-relaxed text-[var(--text)] shadow-[0_18px_44px_-14px_rgba(17,21,25,0.3)]"
+            className="absolute rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-[13.5px] leading-relaxed text-[var(--text)] shadow-[0_18px_44px_-14px_rgba(0,0,0,0.6)]"
             style={{ width: bubbleWidth }}
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{
@@ -342,7 +351,7 @@ export function PetLayer() {
       <AnimatePresence>
         {hover && !placement && !panelOpen && petState === "idle" && !sleeping && (
           <motion.div
-            className="absolute rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-[#111519] shadow-lg"
+            className="absolute rounded-full border border-[var(--line)] bg-[var(--surface)] px-3.5 py-1.5 text-xs font-semibold text-[var(--text)] shadow-lg"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
@@ -385,7 +394,7 @@ export function PetLayer() {
         style={{ width: PET.width, height: PET.height }}
         initial={false}
         animate={{ left: pos.x, top: pos.y }}
-        transition={{ type: "spring", stiffness: 120, damping: 18, mass: 0.9 }}
+        transition={walkTransition.current}
         onMouseEnter={() => {
           setHover(true);
           react();
@@ -393,23 +402,24 @@ export function PetLayer() {
         onMouseLeave={() => setHover(false)}
         onClick={() => setPanelOpen(!panelOpen)}
       >
-        <motion.div animate={{ scaleX: travelling && !guide ? facing : 1 }} transition={{ type: "spring", stiffness: 500, damping: 30 }}>
+        <div>
           <Pet
             state={shownState}
             lookAngle={placement?.angle ?? null}
-            gazeAngle={petState === "idle" ? gaze : null}
+            gazeAngle={travelling ? (heading > 0 ? 0 : 180) : petState === "idle" ? gaze : null}
+            heading={heading}
             reaction={reaction}
             sleeping={sleeping}
             voiceLevel={voice.listening ? micLevel : 0}
             size={PET.width}
           />
-        </motion.div>
+        </div>
         {/* attention dot when idle & closed: there is help available */}
         {!panelOpen && petState === "idle" && !voice.listening && (
           <span className="absolute right-2 top-3 h-3 w-3 animate-ping rounded-full bg-[var(--accent-2)] opacity-60" />
         )}
         {voice.listening && (
-          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ink)] px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold text-[var(--on-accent)]">
             LISTENING
           </span>
         )}

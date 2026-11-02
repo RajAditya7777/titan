@@ -134,12 +134,9 @@ export class BrowserTextToSpeech implements TextToSpeech {
     return this.current !== null;
   }
 
-  /** Prefer an Indian English voice (matches the audience), then natural-sounding English ones. */
+  /** Clear, standard English voices first (the recogniser still listens with VOICE_LOCALE). */
   private pickVoice(): SpeechSynthesisVoice | undefined {
     const voices = window.speechSynthesis.getVoices();
-    const indian = voices.filter((v) => v.lang.replace("_", "-") === "en-IN");
-    const bestIndian = [/Neerja|Prabhat/i, /Google/i, /Rishi|Veena|Aman|Tara/i].map((re) => indian.find((v) => re.test(v.name))).find(Boolean);
-    if (bestIndian ?? indian[0]) return bestIndian ?? indian[0];
     const preferred = [/Samantha/i, /Google US English/i, /Microsoft (Aria|Jenny)/i, /Ava/i, /Allison/i, /Karen/i, /Daniel/i];
     for (const re of preferred) {
       const v = voices.find((x) => re.test(x.name) && x.lang.startsWith("en"));

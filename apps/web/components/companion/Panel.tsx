@@ -7,14 +7,12 @@ import { PAGES } from "@/lib/companion/registry";
 import { useCompanion } from "./CompanionProvider";
 
 const SUGGESTIONS = [
-  "I'm new here. Show me how Reflect works.",
-  "Help me mint 100 USDC+",
-  "What is APY?",
-  "I want to create my own yieldcoin",
-  "Compare the supported stablecoins",
-  "Show me where I can redeem",
-  "Why is my transaction failing?",
-  "Explain this page",
+  "Help me swap 1 SOL for USDC",
+  "Why did I get fewer tokens than expected?",
+  "What is slippage and price impact?",
+  "What is DART routing & Argos?",
+  "What does Prime mode do?",
+  "Help me place a limit order",
 ];
 
 export function CompanionPanel() {
@@ -40,7 +38,7 @@ function MicButton({ big = false }: { big?: boolean }) {
       aria-pressed={on}
       aria-label={on ? "Turn microphone off" : "Talk to the companion"}
       className={`relative grid shrink-0 place-items-center rounded-full transition ${big ? "h-14 w-14" : "h-10 w-10"} ${
-        on ? "bg-[var(--ink)] text-white" : "bg-[var(--accent)] text-white hover:brightness-110"
+        on ? "bg-[var(--ink)] text-white" : "bg-[var(--accent)] text-[var(--on-accent)] hover:brightness-110"
       }`}
     >
       {on && <span className="absolute inset-0 animate-ping rounded-full bg-[var(--accent-2)]/40" />}
@@ -66,9 +64,9 @@ function FullPanel() {
 
   return (
     <motion.section
-      aria-label="Reflect guide"
+      aria-label="Milo, Titan guide"
       data-testid="companion-panel"
-      className="fixed bottom-[124px] right-6 z-[55] flex max-h-[min(640px,calc(100vh-150px))] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-[24px] border border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[0_24px_60px_-18px_rgba(17,21,25,0.28)]"
+      className="titan-ui fixed bottom-[124px] right-6 z-[55] flex max-h-[min(640px,calc(100vh-150px))] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-[24px] border border-[var(--line)] bg-[var(--surface)] text-[var(--text)] shadow-[0_24px_60px_-18px_rgba(0,0,0,0.6)]"
       initial={{ opacity: 0, y: 24, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 24, scale: 0.96 }}
@@ -76,9 +74,15 @@ function FullPanel() {
     >
       <header className="flex items-center gap-3 border-b border-[var(--line)] px-5 py-4">
         <div className="flex-1">
-          <p className="text-[15px] font-medium tracking-[-0.01em]">Reflect</p>
-          <p className="text-xs text-[var(--muted)]">
-            You&apos;re on <span className="text-[var(--text)]">{PAGES[c.page].title}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[16px]">🐾</span>
+            <p className="text-[15px] font-bold tracking-[-0.01em] text-[var(--text)]">Milo</p>
+            <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[var(--accent)] border border-[var(--accent)]/25">
+              Guide
+            </span>
+          </div>
+          <p className="text-xs text-[var(--muted)] mt-0.5">
+            You&apos;re on <span className="text-[var(--text)] font-medium">{PAGES[c.page]?.title ?? c.page}</span>
           </p>
         </div>
         <span
@@ -91,7 +95,7 @@ function FullPanel() {
           type="button"
           data-testid="voice-toggle"
           onClick={() => c.setMuted(!c.voice.muted)}
-          title={c.voice.muted ? "Text only. Click to hear the guide again" : "Turn the guide's voice off (text only)"}
+          title={c.voice.muted ? "Text only. Click to hear Milo again" : "Turn Milo's voice off (text only)"}
           className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition ${
             c.voice.muted
               ? "border-[var(--line-strong)] text-[var(--muted)] hover:text-[var(--text)]"
@@ -109,8 +113,8 @@ function FullPanel() {
       <div ref={scroller} className="flex-1 space-y-3 overflow-y-auto px-5 py-4" data-testid="companion-messages">
         {c.messages.length === 0 && (
           <div className="space-y-4">
-            <p className="text-[15px] leading-relaxed text-[var(--text)]">
-              Hi! I&apos;m your guide to Reflect. Tap the mic and just tell me what you want to do. I&apos;ll show you exactly where to go.
+            <p className="text-[14.5px] leading-relaxed text-[var(--text)]">
+              Hi! I&apos;m <strong>Milo</strong>, your <strong>Titan Exchange</strong> guide. Ask about swaps, quotes, routing or limit orders, or tap the mic. I&apos;ll show you the way; every trade stays yours to approve.
             </p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
@@ -135,7 +139,7 @@ function FullPanel() {
             <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
-                  m.role === "user" ? "rounded-br-md bg-[var(--accent)] text-white" : "rounded-bl-md bg-[var(--surface-2)] text-[var(--text)]"
+                  m.role === "user" ? "rounded-br-md bg-[var(--accent)] text-[var(--on-accent)]" : "rounded-bl-md bg-[var(--surface-2)] text-[var(--text)]"
                 }`}
               >
                 {m.text}
@@ -184,7 +188,7 @@ function FullPanel() {
           data-testid="companion-input"
           className="h-10 flex-1 rounded-full border border-[var(--line-strong)] bg-[var(--bg)] px-4 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
         />
-        <button type="submit" disabled={!draft.trim()} className="grid h-10 w-10 place-items-center rounded-full bg-[var(--ink)] text-white transition enabled:hover:bg-black disabled:opacity-30" aria-label="Send">
+        <button type="submit" disabled={!draft.trim()} className="grid h-10 w-10 place-items-center rounded-full bg-[var(--accent)] text-[var(--on-accent)] transition enabled:hover:brightness-110 disabled:opacity-30" aria-label="Send">
           <Send size={16} />
         </button>
       </form>
@@ -202,7 +206,7 @@ function GuidanceBar({ run }: { run: NonNullable<ReturnType<typeof useCompanion>
   return (
     <motion.div
       data-testid="guidance-bar"
-      className="fixed bottom-5 left-1/2 z-[58] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-3 text-[var(--text)] shadow-[0_20px_50px_-15px_rgba(17,21,25,0.3)]"
+      className="titan-ui fixed bottom-5 left-1/2 z-[58] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 rounded-[20px] border border-[var(--line)] bg-[var(--surface)] p-3 text-[var(--text)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 30 }}
@@ -307,7 +311,7 @@ function Ctl(props: { children: React.ReactNode; onClick: () => void; primary?: 
       data-testid={props.testId}
       className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition disabled:opacity-35 ${
         props.primary
-          ? "bg-[var(--accent)] text-white hover:brightness-110"
+          ? "bg-[var(--accent)] text-[var(--on-accent)] hover:brightness-110"
           : props.danger
             ? "text-[var(--bad)] hover:bg-rose-50"
             : "bg-[var(--surface-2)] text-[var(--text)] hover:bg-[var(--line)]"

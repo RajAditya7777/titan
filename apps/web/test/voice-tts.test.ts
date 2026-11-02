@@ -23,7 +23,7 @@ describe("TTS engine selection", () => {
     expect(ttsEngineFromEnv(env({ TTS_ENGINE: "off" }))).toBe(null);
   });
   it("reads voice and clamps speed", () => {
-    expect(kokoroConfigFromEnv(env())).toEqual({ voice: "hf_alpha", speed: 1 });
+    expect(kokoroConfigFromEnv(env())).toEqual({ voice: "af_heart", speed: 1 });
     expect(kokoroConfigFromEnv(env({ KOKORO_VOICE: "hm_omega", KOKORO_SPEED: "1.2" }))).toEqual({ voice: "hm_omega", speed: 1.2 });
     expect(kokoroConfigFromEnv(env({ KOKORO_SPEED: "9" })).speed).toBe(1);
   });

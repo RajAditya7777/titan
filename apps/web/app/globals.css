@@ -15,7 +15,7 @@
   --accent-soft: #e6f0fa;
   --good: #0f8a5f;
   --bad: #c2334d;
-  /* Pet: a husky-style pup in Reflect's blues (navy coat, ice-white face, bright blue eyes). */
+  --on-accent: #ffffff;
   /* Pet: Titan gold on charcoal, Titan green eyes */
   --pet-outline: #151513;
   --pet-dark: #c8962a;
@@ -25,6 +25,26 @@
   --pet-pink: #f59e8b;
   --pet-iris: #00d692;
   --pet-accent: #e6b93a;
+}
+
+/* Titan Exchange look for the companion (panel, guidance bar, bubble): charcoal surfaces, Titan
+   gold accent, green for good. Scoped by class so it only re-themes what carries it. */
+.titan-ui {
+  --bg: #100f0d;
+  --surface: #151513;
+  --surface-2: #20201d;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --text: #f5f4ef;
+  --muted: #a8a69f;
+  --ink: #2b2927;
+  --accent: #f2d363;
+  --accent-2: #fed766;
+  --accent-soft: rgba(242, 211, 99, 0.12);
+  --on-accent: #100e0a;
+  --good: #00d692;
+  --bad: #f43f5e;
+  color-scheme: dark;
 }
 
 @theme inline {

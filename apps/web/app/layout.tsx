@@ -10,8 +10,8 @@ const ui = Geist({ subsets: ["latin"], variable: "--font-ui", display: "swap" })
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-num", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Reflect Companion (independent demo)",
-  description: "A voice-first AI guide for Reflect Money workflows. Independent proof of concept.",
+  title: "Milo — AI Companion for Titan Exchange",
+  description: "A voice-first AI guide for Titan Exchange on Solana. Independent demo, not affiliated.",
 };
 
 /**

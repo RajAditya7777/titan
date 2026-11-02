@@ -47,6 +47,15 @@ export const LEGS: Array<[number, string[]]> = [
   [14, ["odo", "oko", "ooo"]],
 ];
 export const LEG_TOP = 16;
+/**
+ * Front paws (arms): [column, sprite], hanging from the shoulder at row 12 in front of the body.
+ * They rotate about the top-centre cell, so gestures (wave, clap, cheer, point) need no new art.
+ */
+export const ARMS: Array<[number, string[]]> = [
+  [2, ["omo", "omo", "oko"]],
+  [15, ["omo", "omo", "oko"]],
+];
+export const ARM_TOP = 12;
 /** Bushy tail with a cream tip at columns 16-20, rows 9-16; wags around its base. */
 export const TAIL = ["..oo.", ".owwo", ".ommo", "ommmo", "ommmo", "ommo.", "omdo.", "ooo.."];
 export const TAIL_COL = 16;

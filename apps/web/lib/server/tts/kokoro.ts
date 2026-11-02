@@ -18,8 +18,8 @@ export interface KokoroConfig {
 export function kokoroConfigFromEnv(env = process.env): KokoroConfig {
   const speed = Number(env.KOKORO_SPEED);
   return {
-    // hf_alpha: an Indian English female voice (Hindi speaker embedding voicing English phonemes).
-    voice: env.KOKORO_VOICE || "hf_alpha",
+    // af_heart: Kokoro's clearest standard English voice. Set KOKORO_VOICE=hf_alpha for Indian-accented English.
+    voice: env.KOKORO_VOICE || "af_heart",
     speed: Number.isFinite(speed) && speed >= 0.5 && speed <= 2 ? speed : 1,
   };
 }

@@ -51,7 +51,7 @@ export function respondTo(e: PageEvent): PetResponse | null {
   if (e.kind !== "click") return null;
   switch (e.id) {
     case "titan-switch-tokens":
-      return { reaction: "spin", quip: "Flip!", visit: true };
+      return { reaction: "clap", quip: "Flip!", visit: true };
     case "titan-refresh-quote":
       return { reaction: "hop", quip: "Fresh quote", visit: true };
     case "titan-swap-review":

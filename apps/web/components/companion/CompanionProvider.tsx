@@ -308,10 +308,11 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
         commitRun({ ...r, index: i, status: "waiting_input", offer: step.suggestedValue });
         await speak(step.say, { state: "waiting" });
         if (!alive()) return "pause";
-        // If the field is already valid (e.g. the user typed ahead), move on.
+        // If the field already holds what we'd suggest (or any valid value when we suggest nothing),
+        // move on. A prefilled default (Titan starts at "1") must not swallow the user's amount.
         const spec = getElement(step.target)!;
         const value = fields.current.get(step.target)?.get() ?? "";
-        if (spec.validation && !validate(spec.validation, value)) return "next";
+        if (spec.validation && !validate(spec.validation, value) && (!step.suggestedValue || value === step.suggestedValue)) return "next";
         // Typed ahead but invalid: say so now instead of waiting for another keystroke.
         const problem = value && spec.validation ? validate(spec.validation, value) : null;
         if (problem) {

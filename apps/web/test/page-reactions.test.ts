@@ -16,7 +16,7 @@ describe("pet page reactions", () => {
   });
 
   it("reacts to swap actions and never claims to sign", () => {
-    expect(respondTo({ id: "titan-switch-tokens", kind: "click" })?.reaction).toBe("spin");
+    expect(respondTo({ id: "titan-switch-tokens", kind: "click" })?.reaction).toBe("clap");
     expect(respondTo({ id: "titan-swap-review", kind: "click" })?.reaction).toBe("hearts");
     expect(respondTo({ id: "titan-swap-sign", kind: "click" })?.quip).toMatch(/wallet, not me/);
     expect(respondTo({ id: "titan-nav-limit", kind: "click" })).toMatchObject({ reaction: "hop", visit: false });
