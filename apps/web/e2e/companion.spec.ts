@@ -151,3 +151,34 @@ test("'I'm new' starts the first-swap walkthrough", async ({ page }) => {
   await page.getByTestId("guide-stop").click();
   await expect(page.getByTestId("guidance-bar")).toHaveCount(0);
 });
+
+test("rewards: every control works and campaigns open their own page", async ({ page }) => {
+  await page.goto("/titan/rewards");
+  await expect(page.getByRole("heading", { name: "Connect your wallet" })).toBeVisible();
+  await expect(page.getByText("1-6")).toBeVisible();
+  await page.getByLabel("Next campaigns").click();
+  await expect(page.getByText("PreStocks campaign 4")).toBeVisible();
+  await expect(page.getByLabel("Next campaigns")).toBeDisabled();
+  await page.getByLabel("Previous campaigns").click();
+  await page.getByText("Peaq campaign").click();
+  await expect(page).toHaveURL(/\/titan\/rewards\/peaq$/);
+  await expect(page.getByText("6,250")).toBeVisible();
+  await page.getByRole("tab", { name: /Epoch 3/ }).click();
+  await expect(page.getByRole("tabpanel")).toContainText("Epoch 3");
+  await page.getByRole("link", { name: "Back" }).click();
+  await expect(page).toHaveURL(/\/titan\/rewards$/);
+});
+
+test("developer docs: sidebar, search, code tabs and page links work", async ({ page }) => {
+  await page.goto("/titan/docs/developers-portal/introduction");
+  await expect(page.getByRole("heading", { level: 1, name: "Introduction" })).toBeVisible();
+  await page.getByRole("tab", { name: "Python" }).click();
+  await expect(page.getByRole("tabpanel")).toContainText("import os, requests");
+  await page.getByLabel("Search docs").fill("errors");
+  await page.getByLabel("Search docs").press("Enter");
+  await expect(page).toHaveURL(/developers-portal\/errors$/);
+  await expect(page.locator('aside a[aria-current="page"]')).toHaveText("Errors");
+  await page.getByRole("link", { name: /Next/ }).click();
+  await expect(page).toHaveURL(/developers-portal\/faq$/);
+  await expect(page.getByTestId("companion-pet")).toBeVisible();
+});

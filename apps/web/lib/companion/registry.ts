@@ -269,6 +269,7 @@ const PREFIXES: [string, PageId][] = [
   ["/stablecoins/", "stablecoin"],
   ["/assets/", "assets"],
   ["/case-studies/", "caseStudies"],
+  ["/titan/rewards/", "titan_rewards"],
 ];
 
 export function pageForPath(pathname: string): PageId {

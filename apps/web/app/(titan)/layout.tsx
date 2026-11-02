@@ -7,6 +7,7 @@ import { TitanTickerBar } from "@/components/titan/TitanTickerBar";
 import { SettingsDrawer } from "@/components/titan/SettingsDrawer";
 import { ReviewSwapModal } from "@/components/titan/ReviewSwapModal";
 import { ConnectWalletModal } from "@/components/titan/ConnectWalletModal";
+import { HideOn } from "@/components/titan/HideOn";
 
 export const metadata: Metadata = {
   title: "Titan Exchange — AI Companion Demo",
@@ -22,7 +23,9 @@ export default function TitanLayout({ children }: { children: React.ReactNode })
         <TitanHeader />
 
         {/* Live Marquee Ticker Bar */}
-        <TitanTickerBar />
+        <HideOn prefixes={["/titan/rewards"]}>
+          <TitanTickerBar />
+        </HideOn>
 
         {/* Global Settings & Review Modals */}
         <SettingsDrawer />
