@@ -1,15 +1,30 @@
 # Project status (the single source of truth: update at the end of every phase)
 
-**Current phase:** 00, audit and planning ✅ complete
-**Next exact task:** `ANTIGRAVITY_TASKS/PHASE_01.md` (baseline tag + engine split)
+**Current phase:** Umbra Privacy completed end-to-end ✅ | Titan integration ready
+**Next exact task:** Titan MCP server (`packages/titan-mcp`) & hub integration
 
 ## Completed
-| Phase | Commit | Notes |
+| Phase | Commit / Date | Notes |
 |---|---|---|
-| 00 | (this commit) | Audit, research, decisions, architecture, roadmap, phase prompts |
+| 00 | Prior | Audit, research, decisions, architecture, roadmap, phase prompts |
+| REA | Prior | Connected REA MCP to 8 agents, verified with `rea doctor` |
+| Titan Web | Prior | Reconstructed Titan UI (`/titan`, `/titan/swap`, `/titan/limit`, `/titan/learn`), state, quote engine, planner, 9 tests |
+| Umbra Web | Prior | Reconstructed Umbra UI (`/umbra`), stealth tokens, zk-proving simulator, privacy matrix, 22 tests |
+| `mcp-kit` | Current | Created `@companion/mcp-kit` shared MCP server and tool infrastructure |
+| `umbra-mcp` | Current | Built `@companion/umbra-mcp` (`umbra-companion-mcp`) with 10 verified tools and forbidden words audit |
+| Umbra Companion | Current | Wired Umbra MCP and workflows into `mcp-client.ts`, `orchestrator.ts`, `rules.ts`, and `workflows.ts` |
 
-## Baseline (Reflect companion at `2652ddf`)
-- **Tests:** web 71 unit, mcp-server 12, reflect-api 15, e2e 9/9. All green.
+## Baseline status
+- **Tests:** 137 unit tests green across workspace:
+  - `apps/web`: 102 passed
+  - `packages/mcp-kit`: 3 passed
+  - `packages/umbra-mcp`: 5 passed
+  - `packages/mcp-server`: 12 passed
+  - `packages/reflect-api`: 15 passed
+- **Production Build:** Next.js Turbopack build succeeded with 0 errors.
+- **Active Routes:**
+  - Umbra: `/umbra` (Account Status, Deposit/Shield, Private Send, Withdraw, Transparency Card)
+  - Titan: `/titan`, `/titan/swap`, `/titan/limit`, `/titan/learn`
 - **Works:**
   - voice in/out (Whisper large-v3, local Kokoro TTS, browser fallbacks)
   - voice on/off

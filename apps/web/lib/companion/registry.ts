@@ -24,6 +24,15 @@ export const PAGES = {
   whitelabel: { path: "/whitelabel", title: "Whitelabel", summary: "Configure your own branded yield-bearing stablecoin." },
   portfolio: { path: "/portfolio", title: "Portfolio", summary: "Your holdings, earned yield and transaction history (demo data)." },
   stats: { path: "/stats", title: "Statistics", summary: "Live protocol metrics and APY / exchange-rate history." },
+  // Titan Exchange routes
+  titan_swap: { path: "/titan/swap", title: "Titan Swap", summary: "Meta-aggregated swap on Solana using Argos off-chain optimization and DART on-chain execution." },
+  titan_pro: { path: "/titan/pro", title: "Titan Pro Terminal", summary: "Advanced DEX trading terminal with real-time candlestick charts, order books, and market explorer." },
+  titan_limit: { path: "/titan/limit", title: "Titan Limit Orders", summary: "On-chain limit orders filled by market makers with partial fill support and a $10 minimum order notional." },
+  titan_profile: { path: "/titan/profile", title: "Titan Portfolio", summary: "View your connected balances, asset allocations, 24h PnL performance, and past Solana transactions." },
+  titan_rewards: { path: "/titan/rewards", title: "Titan Rewards & Prime", summary: "Titan Prime zero-fee status, volume points leaderboard, and referral fee rebate rewards." },
+  titan_learn: { path: "/titan/learn", title: "Titan Concepts & Learn", summary: "Educational breakdown of DART routing, Argos arbitrage protection, Prime mode, and MEV sandwich protection." },
+  // Umbra Privacy / Nimbus routes
+  umbra: { path: "/umbra", title: "Umbra Privacy", summary: "Confidential balances, private transfers, and shielding on Solana powered by the Nimbus protocol (simulated demo)." },
 } as const;
 
 export type PageId = keyof typeof PAGES;
@@ -130,6 +139,122 @@ export const ELEMENTS = {
   "usdt-review": { page: "usdt", kind: "button", label: "Review", description: "Opens a summary before anything is signed.", sensitive: true },
   "usdt-sign": { page: "usdt", kind: "button", label: "Approve in wallet", description: "Your wallet signs. Only you can do this. The companion never will.", sensitive: true },
   "usdt-faq": { page: "usdt", kind: "section", label: "FAQs", description: "Short answers about where the yield comes from and the risks." },
+
+  // Titan Exchange Global
+  "titan-nav-swap": { page: "global", kind: "nav", label: "Swap", description: "Navigate to the Titan Instant Swap interface." },
+  "titan-nav-pro": { page: "global", kind: "nav", label: "Pro", description: "Navigate to the Titan Pro trading terminal." },
+  "titan-nav-limit": { page: "global", kind: "nav", label: "Limit Orders", description: "Navigate to Titan Limit Orders." },
+  "titan-nav-learn": { page: "global", kind: "nav", label: "Learn & Concepts", description: "Explore how Titan's Argos and DART routing work under the hood." },
+  "titan-wallet-badge": { page: "global", kind: "display", label: "Demo Wallet", description: "Simulated demo wallet for the AI Companion." },
+  "titan-connect-wallet": { page: "global", kind: "button", label: "Connect Wallet", description: "Connect Solana wallet to start trading or viewing orders." },
+
+  // Titan Pro View Elements
+  "titan-search-input": { page: "titan_pro", kind: "input", label: "Search Asset", description: "Search for Solana tokens by name, symbol, or contract address." },
+  "titan-candlestick-chart": { page: "titan_pro", kind: "section", label: "Candlestick Chart", description: "Interactive price chart with OHLC candlestick data, volume, and indicators." },
+  "titan-holdings-tab": { page: "titan_pro", kind: "button", label: "Holdings Tab", description: "View your current token balances and portfolio allocations." },
+  "titan-open-orders-tab": { page: "titan_pro", kind: "button", label: "Open Orders Tab", description: "View currently active limit and conditional orders." },
+  "titan-order-history-tab": { page: "titan_pro", kind: "button", label: "Order History Tab", description: "View filled, cancelled, and expired trades." },
+
+  // Titan Swap Tabs & Top Controls
+  "titan-tab-instant": { page: "titan_swap", kind: "button", label: "Instant Swap", description: "Execute an instant market swap routed through Titan aggregators." },
+  "titan-tab-limit": { page: "titan_swap", kind: "button", label: "Limit Order", description: "Place an on-chain limit order filled by market makers." },
+  "titan-tab-dca": { page: "titan_swap", kind: "button", label: "DCA (Dollar-Cost Averaging)", description: "Titan DCA (explained only). Automated recurring swaps." },
+  "titan-tab-slice": { page: "titan_swap", kind: "button", label: "Slice Orders", description: "Titan Slice execution (explained only). Large orders split into smaller tranches." },
+  "titan-prime-toggle": { page: "titan_swap", kind: "button", label: "Prime Mode", description: "Zero Titan fees, auto sandwich protection, and optimized slippage." },
+  "titan-dart-selector": { page: "titan_swap", kind: "select", label: "DART Routing Mode", description: "Dynamic Allocation and Real Time re-splits trades across pools at execution." },
+  "titan-chart-toggle": { page: "titan_swap", kind: "button", label: "Toggle Chart", description: "Show or hide the live candlestick price chart." },
+  "titan-refresh-quote": { page: "titan_swap", kind: "button", label: "Refresh Quote", description: "Fetch a fresh simulated quote and route re-simulation from Titan." },
+
+  // Titan Sell Card
+  "titan-sell-card": { page: "titan_swap", kind: "section", label: "Sell Token Card", description: "Specify the token and amount you want to swap from." },
+  "titan-sell-token-select": { page: "titan_swap", kind: "select", label: "Input Token", description: "Select which token to sell." },
+  "titan-sell-balance": { page: "titan_swap", kind: "display", label: "Token Balance", description: "Your available balance in the simulated demo wallet." },
+  "titan-sell-amount-input": { page: "titan_swap", kind: "input", label: "Input Amount", description: "The amount of token you want to sell.", validation: "positive-amount", fillable: true },
+  "titan-sell-max": { page: "titan_swap", kind: "button", label: "Max Amount", description: "Fill input with your entire available balance." },
+  "titan-sell-half": { page: "titan_swap", kind: "button", label: "50% Amount", description: "Fill input with half of your available balance." },
+
+  // Titan Switch & Buy Card
+  "titan-switch-tokens": { page: "titan_swap", kind: "button", label: "Switch Tokens", description: "Invert swap direction, switching sell and buy tokens." },
+  "titan-buy-card": { page: "titan_swap", kind: "section", label: "Buy Token Card", description: "The estimated output amount and token you will receive." },
+  "titan-buy-token-select": { page: "titan_swap", kind: "select", label: "Output Token", description: "Select which token to receive from the swap." },
+  "titan-buy-amount-output": { page: "titan_swap", kind: "display", label: "Estimated Output", description: "Calculated output after simulating Argos optimization and DART routing." },
+
+  // Titan Details & Settings
+  "titan-rate-display": { page: "titan_swap", kind: "display", label: "Exchange Rate", description: "The effective execution rate between the two tokens." },
+  "titan-simulated-badge": { page: "titan_swap", kind: "display", label: "Simulated Data Badge", description: "Indicates quote and routing calculations are simulated deterministically." },
+  "titan-route-summary": { page: "titan_swap", kind: "section", label: "Routing Route", description: "Shows how Argos splits the trade across DEXes." },
+  "titan-price-impact": { page: "titan_swap", kind: "display", label: "Price Impact", description: "Estimated difference between market price and execution price." },
+  "titan-fees-breakdown": { page: "titan_swap", kind: "section", label: "Fee Breakdown", description: "Titan fee is 0% in Prime. DART fee is up to 1 bps." },
+  "titan-settings-toggle": { page: "titan_swap", kind: "button", label: "Settings", description: "Open slippage tolerance and MEV protection settings." },
+  "titan-slippage-base-input": { page: "titan_swap", kind: "input", label: "Base Token Slippage", description: "Maximum allowed slippage for volatile tokens.", fillable: true },
+  "titan-slippage-stable-input": { page: "titan_swap", kind: "input", label: "Stable/LST Slippage", description: "Tighter slippage tolerance for stablecoins.", fillable: true },
+  "titan-priority-fee-toggle": { page: "titan_swap", kind: "select", label: "Fee Method", description: "Switch between Priority Fees and MEV Protect." },
+  "titan-swap-review": { page: "titan_swap", kind: "button", label: "Review Swap", description: "Open simulated transaction review summary before approving.", sensitive: true },
+  "titan-swap-sign": { page: "titan_swap", kind: "button", label: "Approve in wallet (simulated)", description: "Simulate signing the swap transaction. Companion never signs.", sensitive: true },
+
+  // Titan Limit Orders
+  "titan-limit-pair": { page: "titan_limit", kind: "select", label: "Limit Order Pair", description: "Select the market trading pair." },
+  "titan-limit-side-buy": { page: "titan_limit", kind: "button", label: "Buy Side", description: "Place a limit order to buy the base asset." },
+  "titan-limit-side-sell": { page: "titan_limit", kind: "button", label: "Sell Side", description: "Place a limit order to sell the base asset." },
+  "titan-limit-price-input": { page: "titan_limit", kind: "input", label: "Limit Price", description: "Target price at which order executes.", validation: "positive-amount", fillable: true },
+  "titan-limit-market-ref": { page: "titan_limit", kind: "button", label: "Market Price Reference", description: "Current market reference price." },
+  "titan-limit-quantity-input": { page: "titan_limit", kind: "input", label: "Order Quantity", description: "Amount of base asset to buy or sell.", validation: "positive-amount", fillable: true },
+  "titan-limit-expiry-select": { page: "titan_limit", kind: "select", label: "Order Expiry", description: "Expiration duration for the on-chain limit order." },
+  "titan-limit-min-validation": { page: "titan_limit", kind: "display", label: "$10 Minimum Validation", description: "Enforces strict $10 notional minimum." },
+  "titan-limit-submit": { page: "titan_limit", kind: "button", label: "Place Limit Order", description: "Submits order to on-chain orderbook.", sensitive: true },
+
+  // Titan Learn
+  "titan-learn-dart": { page: "titan_learn", kind: "section", label: "DART Routing Architecture", description: "Deep dive into DART on-chain execution guarantee." },
+  "titan-learn-argos": { page: "titan_learn", kind: "section", label: "Argos Optimization Engine", description: "Mathematical optimization algorithm solving multi-hop routing off-chain." },
+  "titan-learn-prime": { page: "titan_learn", kind: "section", label: "Prime Liquidity & Zero Fees", description: "How Prime mode unlocks zero protocol fees." },
+  "titan-learn-mev": { page: "titan_learn", kind: "section", label: "MEV & Sandwich Protection", description: "Jito bundles preventing front-running bots." },
+
+  // Umbra Privacy / Nimbus
+  "umbra-nav-account": { page: "umbra", kind: "nav", label: "Account Status", description: "Inspect registration status, derived platform wallet, and balances." },
+  "umbra-nav-deposit": { page: "umbra", kind: "nav", label: "Deposit / Shield", description: "Deposit assets into the Nimbus shielded pool." },
+  "umbra-nav-send": { page: "umbra", kind: "nav", label: "Private Send", description: "Confidential transfer to another registered recipient." },
+  "umbra-nav-withdraw": { page: "umbra", kind: "nav", label: "Withdraw / Unshield", description: "Unshield tokens out of the private pool back to a public address." },
+  "umbra-nav-privacy": { page: "umbra", kind: "nav", label: "Privacy Transparency", description: "Review what the protocol keeps private versus what is public on-chain." },
+  "umbra-account-card": { page: "umbra", kind: "section", label: "Account Card", description: "Your Nimbus cryptographic account status and balance overview." },
+  "umbra-account-status": { page: "umbra", kind: "display", label: "Registration Status", description: "Whether your wallet has derived a Nimbus platform wallet." },
+  "umbra-account-register-btn": { page: "umbra", kind: "button", label: "Derive & Register", description: "Derive deterministic keys and bind platform wallet on Solana.", sensitive: true },
+  "umbra-account-platform-wallet": { page: "umbra", kind: "display", label: "Platform Wallet", description: "The Solana keypair derived from your wallet signature." },
+  "umbra-account-sync-btn": { page: "umbra", kind: "button", label: "Sync Note Store", description: "Synchronize local encrypted note store with on-chain commitments." },
+  "umbra-balance-public": { page: "umbra", kind: "display", label: "Public Balances", description: "Tokens sitting in your unshielded standard Solana wallet." },
+  "umbra-balance-private": { page: "umbra", kind: "display", label: "Shielded Balances", description: "Tokens protected inside the Nimbus shielded pool across confidential notes." },
+  "umbra-deposit-tab": { page: "umbra", kind: "section", label: "Deposit Tab", description: "Shield funds into the confidential pool." },
+  "umbra-deposit-asset": { page: "umbra", kind: "select", label: "Deposit Asset", description: "The SPL token or native SOL you wish to shield." },
+  "umbra-deposit-amount": { page: "umbra", kind: "input", label: "Deposit Amount", description: "How many tokens to shield into your private balance.", validation: "positive-amount", fillable: true },
+  "umbra-deposit-max": { page: "umbra", kind: "button", label: "Max Amount", description: "Select the entire available public balance for shielding." },
+  "umbra-deposit-breakdown": { page: "umbra", kind: "section", label: "Deposit Privacy Breakdown", description: "Explains what observers see during a deposit." },
+  "umbra-deposit-fee": { page: "umbra", kind: "display", label: "Deposit Fee Breakdown", description: "Shows Solana network fee and Nimbus protocol fee." },
+  "umbra-deposit-confirm": { page: "umbra", kind: "button", label: "Shield Funds", description: "Review and initiate confidential deposit.", sensitive: true },
+  "umbra-deposit-approve": { page: "umbra", kind: "button", label: "Approve Deposit in Wallet", description: "Sign deposit transaction in simulated wallet.", sensitive: true },
+  "umbra-send-tab": { page: "umbra", kind: "section", label: "Private Send Tab", description: "Send confidential payments to registered recipients." },
+  "umbra-send-asset": { page: "umbra", kind: "select", label: "Send Asset", description: "The shielded token you want to send." },
+  "umbra-send-amount": { page: "umbra", kind: "input", label: "Send Amount", description: "Amount of shielded tokens to transfer.", validation: "positive-amount", fillable: true },
+  "umbra-send-max": { page: "umbra", kind: "button", label: "Max Shielded Amount", description: "Use full shielded balance for transfer." },
+  "umbra-send-recipient": { page: "umbra", kind: "input", label: "Recipient Address", description: "Destination address. Must be registered with Nimbus.", validation: "non-empty", fillable: true },
+  "umbra-send-recipient-status": { page: "umbra", kind: "display", label: "Recipient Status Check", description: "Checks whether recipient is registered in Nimbus registry." },
+  "umbra-send-shortcut-alice": { page: "umbra", kind: "button", label: "Alice (Registered)", description: "Autofill Alice's registered Nimbus address." },
+  "umbra-send-shortcut-bob": { page: "umbra", kind: "button", label: "Bob (Unregistered)", description: "Autofill Bob's unregistered address to test verification." },
+  "umbra-send-privacy-breakdown": { page: "umbra", kind: "section", label: "Transfer Privacy Breakdown", description: "Displays what is hidden vs what is public." },
+  "umbra-send-confirm": { page: "umbra", kind: "button", label: "Send Privately", description: "Generates client zk-proof and submits through relayer.", sensitive: true },
+  "umbra-send-approve": { page: "umbra", kind: "button", label: "Approve Private Send", description: "Review and approve in simulated wallet.", sensitive: true },
+  "umbra-withdraw-tab": { page: "umbra", kind: "section", label: "Withdraw Tab", description: "Unshield funds back to a public Solana address." },
+  "umbra-withdraw-asset": { page: "umbra", kind: "select", label: "Withdraw Asset", description: "The shielded token to withdraw." },
+  "umbra-withdraw-amount": { page: "umbra", kind: "input", label: "Withdraw Amount", description: "Amount to unshield back to public address.", validation: "positive-amount", fillable: true },
+  "umbra-withdraw-max": { page: "umbra", kind: "button", label: "Max Withdraw", description: "Select full shielded balance to unshield." },
+  "umbra-withdraw-destination": { page: "umbra", kind: "input", label: "Destination Address", description: "Public Solana wallet address receiving unshielded funds.", validation: "non-empty", fillable: true },
+  "umbra-withdraw-dest-toggle": { page: "umbra", kind: "button", label: "Use Custom Address", description: "Toggle between connected public wallet and custom destination." },
+  "umbra-withdraw-warning": { page: "umbra", kind: "section", label: "Unlinkability Notice", description: "Warns that withdrawing to an address already linked to you weakens privacy." },
+  "umbra-withdraw-fee": { page: "umbra", kind: "display", label: "Withdrawal Fee Estimate", description: "Relayer fee and network fee breakdown." },
+  "umbra-withdraw-confirm": { page: "umbra", kind: "button", label: "Unshield & Withdraw", description: "Generates unshielding proof and requests relayer execution.", sensitive: true },
+  "umbra-withdraw-approve": { page: "umbra", kind: "button", label: "Approve Withdrawal", description: "Approve in simulated wallet.", sensitive: true },
+  "umbra-privacy-card": { page: "umbra", kind: "section", label: "Privacy Card", description: "Interactive transparency matrix displaying what is hidden vs public." },
+  "umbra-privacy-toggle": { page: "umbra", kind: "button", label: "Toggle Privacy Details", description: "Expand or collapse detailed breakdowns of documented leaks." },
+  "umbra-privacy-matrix": { page: "umbra", kind: "display", label: "Visibility Matrix", description: "Side-by-side comparison of public vs hidden fields." },
+  "umbra-privacy-leaks": { page: "umbra", kind: "section", label: "Documented Limits", description: "Explains correlation risks, recipient discovery, and absence of timelocks." },
 } as const satisfies Record<string, ElementSpec>;
 
 export type ElementId = keyof typeof ELEMENTS;

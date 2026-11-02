@@ -1,0 +1,132 @@
+"use client";
+
+import React, { useState } from "react";
+import { Sparkles, Gift, Users, Award, ShieldCheck, Copy, Check } from "lucide-react";
+import { useTitan } from "@/lib/products/titan/state";
+
+export default function TitanRewardsPage() {
+  const { prime, setPrime, walletConnected, setWalletModalOpen } = useTitan();
+  const [copied, setCopied] = useState(false);
+
+  const referralLink = "https://titan.exchange/r/So11_titan";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(referralLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="w-full max-w-5xl mx-auto py-8 px-4 text-white space-y-6 select-none">
+      {/* Rewards Hero Banner */}
+      <div className="rounded-3xl border border-[#fed766]/30 bg-gradient-to-br from-[#1c180e] via-[#141414] to-[#0d0d0c] p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+        <div className="max-w-2xl space-y-3 relative z-10">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-[#fed766]/20 border border-[#fed766]/40 px-3 py-1 text-xs font-bold text-[#fed766]">
+            <Sparkles className="h-3.5 w-3.5 fill-current" />
+            <span>Titan Prime Tier • 0% Protocol Fees</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
+            Trade with Zero Protocol Fees & Earn Volume Points
+          </h1>
+
+          <p className="text-xs sm:text-sm text-[#a8a69f] leading-relaxed">
+            Titan Prime unlocks zero fee execution across all Solana DEX routes, automated Jito sandwich protection, and exclusive reward multipliers.
+          </p>
+
+          <div className="pt-2 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPrime(!prime)}
+              className="rounded-full bg-[#fed766] hover:bg-[#ffe082] px-6 py-2.5 text-xs sm:text-sm font-bold text-black shadow-lg transition-all"
+            >
+              {prime ? "Prime Active (0% Fees)" : "Enable Prime Mode"}
+            </button>
+            <span className="text-xs text-[#737373]">No lockups • Instant activation</span>
+          </div>
+        </div>
+
+        {/* Decorative Golden Glow */}
+        <div className="pointer-events-none absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-[#fed766]/10 blur-3xl" />
+      </div>
+
+      {/* Rewards Milestones Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Trading Points */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#121212] p-5 shadow-lg space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#8a8a8a]">Your Titan Points</span>
+            <Award className="h-4 w-4 text-[#fed766]" />
+          </div>
+          <div className="text-2xl font-black font-mono text-white">48,250 PTS</div>
+          <p className="text-[11px] text-[#737373] leading-relaxed">
+            Earned from swaps, DART multi-hop trades, and limit fills over the last 30 days.
+          </p>
+          <div className="w-full bg-white/[0.05] rounded-full h-1.5 overflow-hidden">
+            <div className="bg-[#fed766] h-full rounded-full w-[65%]" />
+          </div>
+          <div className="flex justify-between text-[10px] text-[#737373]">
+            <span>Tier 2 Trader</span>
+            <span>65% to Tier 3</span>
+          </div>
+        </div>
+
+        {/* Card 2: Fee Savings */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#121212] p-5 shadow-lg space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#8a8a8a]">Total Fees Saved</span>
+            <ShieldCheck className="h-4 w-4 text-[#00d692]" />
+          </div>
+          <div className="text-2xl font-black font-mono text-[#00d692]">$148.60</div>
+          <p className="text-[11px] text-[#737373] leading-relaxed">
+            Cumulative protocol trading fees eliminated by utilizing Titan Prime mode.
+          </p>
+          <div className="pt-2 text-[11px] text-[#8a8a8a] flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-[#00d692]" />
+            <span>0.00% protocol fee active</span>
+          </div>
+        </div>
+
+        {/* Card 3: Referral Earnings */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#121212] p-5 shadow-lg space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#8a8a8a]">Referral Rebate</span>
+            <Users className="h-4 w-4 text-[#fed766]" />
+          </div>
+          <div className="text-2xl font-black font-mono text-white">$42.80 USDC</div>
+          <p className="text-[11px] text-[#737373] leading-relaxed">
+            20% lifetime fee rebate on all trading volume generated by your invitees.
+          </p>
+          <button
+            type="button"
+            className="w-full rounded-xl bg-white/[0.06] hover:bg-white/[0.1] py-1.5 text-xs font-bold text-white transition-colors"
+          >
+            Claim Rebate
+          </button>
+        </div>
+      </div>
+
+      {/* Referral Link Box */}
+      <div className="rounded-3xl border border-white/[0.08] bg-[#121212] p-6 shadow-xl space-y-3">
+        <h2 className="text-sm font-extrabold text-white">Your Titan Referral Link</h2>
+        <p className="text-xs text-[#8a8a8a]">
+          Share your referral link with traders. When they trade via Titan, you earn a 20% rebate on protocol fees.
+        </p>
+
+        <div className="flex items-center gap-2 max-w-lg">
+          <div className="flex-1 rounded-xl border border-white/[0.08] bg-[#1a1a1a] px-3.5 py-2.5 font-mono text-xs text-white overflow-hidden text-ellipsis whitespace-nowrap">
+            {referralLink}
+          </div>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="rounded-xl bg-[#fed766] hover:bg-[#ffe082] px-4 py-2.5 text-xs font-bold text-black flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            <span>{copied ? "Copied!" : "Copy Link"}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

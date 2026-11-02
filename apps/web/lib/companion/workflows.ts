@@ -1,5 +1,8 @@
-import type { Workflow } from "./actions";
+import type { Step, Workflow } from "./actions";
 import { validate } from "./registry";
+import { UMBRA_GOALS } from "@/lib/products/umbra/planner";
+import { getUmbraAppState } from "@/lib/products/umbra/state";
+import { planTitanGoal } from "@/lib/products/titan/planner";
 
 /**
  * Hand-authored workflows for the core journeys. The LLM picks one of these and fills its
@@ -7,7 +10,20 @@ import { validate } from "./registry";
  * It can still compose short ad-hoc tours from the same step schema for everything else.
  */
 
-export const WORKFLOW_IDS = ["onboarding_tour", "mint", "redeem", "create_whitelabel", "explain_apy"] as const;
+export const WORKFLOW_IDS = [
+  "onboarding_tour",
+  "mint",
+  "redeem",
+  "create_whitelabel",
+  "explain_apy",
+  "titan_swap",
+  "titan_limit",
+  "umbra_register",
+  "umbra_deposit",
+  "umbra_private_send",
+  "umbra_withdraw",
+  "umbra_explain_privacy",
+] as const;
 export type WorkflowId = (typeof WORKFLOW_IDS)[number];
 
 export interface WorkflowParams {
@@ -147,6 +163,38 @@ export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}): Work
           { type: "point", target: "stablecoin-rate", say: "You see it here: the exchange rate rises as yield accrues. No claiming needed." },
         ],
       };
+
+    case "titan_swap":
+      return planTitanGoal("swap", {
+        amount: params.amount,
+        outputToken: params.tokenSymbol,
+      });
+
+    case "titan_limit":
+      return planTitanGoal("limit_order", {
+        amount: params.amount,
+      });
+
+    case "umbra_register": {
+      const wf = UMBRA_GOALS.register!({ slots: {}, state: getUmbraAppState() });
+      return { id, title: wf.title, steps: wf.steps as Step[] };
+    }
+    case "umbra_deposit": {
+      const wf = UMBRA_GOALS.deposit!({ slots: { amount: params.amount ?? "100" }, state: getUmbraAppState() });
+      return { id, title: wf.title, steps: wf.steps as Step[] };
+    }
+    case "umbra_private_send": {
+      const wf = UMBRA_GOALS.private_send!({ slots: { amount: params.amount ?? "50" }, state: getUmbraAppState() });
+      return { id, title: wf.title, steps: wf.steps as Step[] };
+    }
+    case "umbra_withdraw": {
+      const wf = UMBRA_GOALS.withdraw!({ slots: { amount: params.amount ?? "25" }, state: getUmbraAppState() });
+      return { id, title: wf.title, steps: wf.steps as Step[] };
+    }
+    case "umbra_explain_privacy": {
+      const wf = UMBRA_GOALS.explain_privacy!({ slots: {}, state: getUmbraAppState() });
+      return { id, title: wf.title, steps: wf.steps as Step[] };
+    }
   }
 }
 

@@ -71,13 +71,32 @@ const RESPOND_TOOL: FunctionTool = {
 };
 
 function systemPrompt(input: TurnInput) {
-  // Kept deliberately compact: every token here is re-sent on every round, and free-tier
-  // providers cap tokens per minute.
-  return `You are Reflect Companion, a friendly spoken guide in an independent demo app for Reflect Money (yield-bearing stablecoins on Solana, e.g. USDC+, which grows in value vs USD).
-Speak warmly and briefly (1-3 sentences, plain words, no markdown or URLs).
-Use reflect_* tools for any number; never invent figures. APY is variable, never guaranteed. USDC+ is not a Circle product.
-Never sign, approve or submit transactions or ask for keys; you only point, the user clicks. Whitelabel deploy is disabled.
-Use workflow_id for mint, redeem, create_whitelabel (own yieldcoin), onboarding_tour (new users), explain_apy; amounts go in workflow_params.amount. Use point_target for "where is X"/"explain this". Missing info: ask one short question, needs_clarification=true.
+  if (input.page === "umbra" || /\b(umbra|nimbus|shield|unshield|stealth|private send|private transfer|confidential)\b/i.test(input.utterance)) {
+    return `You are Milo, a friendly 3D puppy companion guide for Umbra Privacy (Nimbus Protocol on Solana, Simulated Summit Demo).
+Speak warmly, faithfully and briefly (1-3 sentences, plain words, no markdown or URLs).
+Use umbra_* tools for any guidance, privacy transparency reports, readiness checks, or error diagnoses.
+Never say "anonymous", "untraceable", or "100% private". Always state that deposits/withdrawals have public parameters.
+Never sign, approve or submit transactions or ask for keys; you only point, the user approves.
+Use workflow_id for umbra_register, umbra_deposit, umbra_private_send, umbra_withdraw, umbra_explain_privacy; amounts go in workflow_params.amount.
+Page: ${input.page}. Here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
+Elsewhere: ${siteMap(input.page)}
+Typed fields: ${JSON.stringify(input.fields)}
+Always finish with companion_respond.`;
+  }
+
+  // Primary: Titan Exchange
+  return `You are Milo, a faithful, friendly, expert 3D puppy companion guide for Titan Exchange (titan.exchange on Solana).
+Speak warmly, faithfully, and concisely (1–3 short sentences, plain words, no markdown, no URLs).
+You are an expert on Titan Exchange:
+- Swap execution, token pairs (SOL, USDC, HYPE, PUMP, ZEC, cbBTC, ETH, TRUMP, etc.)
+- Argos off-chain multi-hop route optimization
+- DART (Dynamic Automated Routing Technology) split rebalancing
+- Titan Prime tier (0% protocol trading fees, automatic MEV sandwich protection)
+- Slippage settings (base volatile vs stable/LST) and price impact
+- Limit orders ($10 minimum notional, conditional orders)
+Never sign, approve, or submit transactions; you only guide and point at elements, the user remains in complete control and approves in their own wallet.
+If user wants to swap, use workflow_id: "titan_swap", with workflow_params: { amount, tokenSymbol }.
+If user wants a limit order, use workflow_id: "titan_limit".
 Page: ${input.page}. Here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
 Elsewhere: ${siteMap(input.page)}
 Typed fields: ${JSON.stringify(input.fields)}
@@ -89,7 +108,8 @@ export async function runTurn(input: TurnInput, provider: LlmProvider | null): P
 
   const toolCalls: CompanionReply["toolCalls"] = [];
   try {
-    const { tools: mcpTools } = await listTools();
+    const isUmbra = input.page === "umbra" || /\b(umbra|nimbus|shield|unshield|stealth|private send|private transfer|confidential)\b/i.test(input.utterance);
+    const { tools: mcpTools } = await listTools(isUmbra ? "umbra" : "titan");
     const fnTools: FunctionTool[] = mcpTools
       .filter((t) => !LLM_EXCLUDED_TOOLS.has(t.name) && toolIsRelevant(t.name, input.utterance))
       .map((t) => ({
@@ -259,20 +279,26 @@ export function dropNulls(args: Record<string, unknown>): Record<string, unknown
 
 /** Always offered: they answer what most users ask. The rest only when the words call for them. */
 const CORE_TOOLS = new Set([
-  "reflect_get_stablecoin_overview",
-  "reflect_get_mint_quote",
-  "reflect_get_redeem_quote",
-  "reflect_get_protocol_stats",
-  "reflect_get_whitelabel_options",
+  "titan_get_quote",
+  "titan_explain_quote",
+  "titan_explain_slippage",
+  "titan_explain_routing",
+  "titan_explain_prime",
+  "titan_explain_limit_orders",
+  "titan_diagnose_error",
+  "titan_get_documentation",
 ]);
 const SITUATIONAL: [RegExp, string[]][] = [
-  [/error|fail|wrong|broken|reject|integrat|sdk|api|code|developer|request|endpoint|bug/i, ["reflect_explain_error", "reflect_check_integration", "reflect_get_documentation"]],
-  [/doc|documentation|learn more|source|read about/i, ["reflect_get_documentation"]],
-  [/event|activity|recent|transaction history|happen/i, ["reflect_get_protocol_events"]],
-  [/oracle|price feed|pyth|chainlink/i, ["reflect_get_oracle_data"]],
+  [/error|fail|wrong|broken|reject|slippage|impact|fee/i, ["titan_diagnose_error", "titan_explain_slippage", "titan_explain_routing"]],
+  [/doc|documentation|learn|source|guide|gitbook/i, ["titan_get_documentation"]],
+  [/prime|fee|zero fee/i, ["titan_explain_prime"]],
+  [/route|dart|argos|split|multi-hop/i, ["titan_explain_routing"]],
+  [/limit|order|stop/i, ["titan_explain_limit_orders"]],
 ];
 
 export function toolIsRelevant(name: string, utterance: string): boolean {
+  if (name.startsWith("titan_")) return true;
+  if (name.startsWith("umbra_")) return true;
   if (CORE_TOOLS.has(name)) return true;
   return SITUATIONAL.some(([re, names]) => names.includes(name) && re.test(utterance));
 }

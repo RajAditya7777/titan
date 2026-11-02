@@ -12,16 +12,21 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@companion/mcp-kit": "workspace:*",
     "@companion/mcp-server": "workspace:*",
     "@companion/reflect-api": "workspace:*",
+    "@companion/titan-mcp": "workspace:*",
+    "@companion/umbra-mcp": "workspace:*",
     "@huggingface/transformers": "3.8.1",
     "@modelcontextprotocol/sdk": "1.32.2",
+    "@types/three": "^0.187.0",
     "kokoro-js": "1.2.1",
     "lucide-react": "1.66.0",
     "motion": "14.9.0",
     "next": "16.4.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "three": "^0.187.0",
     "zod": "4.6.7"
   },
   "devDependencies": {

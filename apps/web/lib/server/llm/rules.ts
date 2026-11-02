@@ -1,7 +1,9 @@
-import { buildWorkflow, type WorkflowParams } from "@/lib/companion/workflows";
+import { buildWorkflow, type WorkflowId, type WorkflowParams } from "@/lib/companion/workflows";
 import { ELEMENTS, ELEMENT_IDS, PAGES, elementsOnPage, type ElementId, type PageId } from "@/lib/companion/registry";
 import { extractNumber, normalise } from "@/lib/companion/commands";
 import type { CompanionReply } from "@/lib/companion/actions";
+import { matchUmbraRules } from "@/lib/products/umbra/rules";
+import { getUmbraAppState } from "@/lib/products/umbra/state";
 
 /**
  * Offline intent planner. Runs when no LLM is configured, or when the LLM call fails, so the
@@ -30,6 +32,78 @@ export async function planWithRules(utterance: string, ctx: Ctx): Promise<Compan
 }
 
 async function route(text: string, ctx: Ctx): Promise<Reply> {
+  // 1. Umbra / Nimbus Routing
+  if (ctx.page === "umbra" || /\b(umbra|nimbus|shield|unshield|stealth|private send|private transfer|confidential)\b/i.test(text)) {
+    const umbraMatch = matchUmbraRules(text, getUmbraAppState());
+    if (umbraMatch) {
+      if (umbraMatch.goal) {
+        const wfId = `umbra_${umbraMatch.goal}` as WorkflowId;
+        return {
+          speech: umbraMatch.speech,
+          workflow: buildWorkflow(wfId, { amount: umbraMatch.slots.amount }),
+        };
+      }
+      return {
+        speech: umbraMatch.speech,
+      };
+    }
+  }
+
+  // 2. Titan Routing (Primary)
+  if (
+    ctx.page.startsWith("titan_") ||
+    ctx.page === "home" ||
+    /\b(titan|swap|trade|buy|sell|quote|slippage|price impact|dart|argos|prime|limit order|conditional order)\b/i.test(text)
+  ) {
+    if (/\b(slippage|price impact)\b/i.test(text)) {
+      const r = await ctx.runTool("titan_explain_slippage", { tokenType: "volatile" });
+      const speech = r.ok && r.data?.explanation
+        ? r.data.explanation
+        : "Slippage is the difference between expected quote and final execution price. Titan separates base volatile tokens from stable/LST pairs.";
+      return { speech, point: { target: "titan-settings-toggle", say: "You can adjust slippage tolerance here." } };
+    }
+
+    if (/\b(dart|argos|route|routing)\b/i.test(text)) {
+      const r = await ctx.runTool("titan_explain_routing", { dartMode: "Auto" });
+      const speech = r.ok && r.data?.summary
+        ? r.data.summary
+        : "Argos optimizes multi-hop routes off-chain, while DART rebalances split allocations on-chain to minimize price impact.";
+      return { speech, point: { target: "titan-dart-selector", say: "DART is set to Auto for dynamic execution." } };
+    }
+
+    if (/\b(prime|fee|zero fee)\b/i.test(text)) {
+      const r = await ctx.runTool("titan_explain_prime", {});
+      const speech = r.ok && r.data?.summary
+        ? r.data.summary
+        : "Titan Prime gives you 0% protocol fees and auto sandwich protection via Jito bundles.";
+      return { speech, point: { target: "titan-prime-toggle", say: "Prime mode is active with zero protocol fees." } };
+    }
+
+    if (/\b(limit|limit order|orderbook)\b/i.test(text)) {
+      return {
+        speech: "Titan supports on-chain limit orders with a $10 minimum notional and partial fills. Let's look at limit orders.",
+        workflow: buildWorkflow("titan_limit"),
+      };
+    }
+
+    if (/\b(swap|trade|exchange|buy|sell)\b/i.test(text)) {
+      const amt = extractAmount(text);
+      return {
+        speech: amt
+          ? `I'll guide you through swapping ${amt}. Let's enter the amount and inspect the route.`
+          : "I'll guide you through swapping on Titan. Let's enter the amount and inspect the route.",
+        workflow: buildWorkflow("titan_swap", { amount: amt }),
+      };
+    }
+
+    if (/\b(error|fail|failing|failed|issue|problem)\b/i.test(text)) {
+      const r = await ctx.runTool("titan_diagnose_error", { errorMessage: text });
+      if (r.ok && r.data?.possibleCause) {
+        return { speech: `${r.data.possibleCause} Recommended fix: ${r.data.suggestedAction}` };
+      }
+    }
+  }
+
   const amount = extractAmount(text);
 
   if (/\b(error|fail(ed|ing|s)?|not working|broken|rejected|won'?t go through)\b/.test(text)) {
@@ -126,13 +200,13 @@ async function route(text: string, ctx: Ctx): Promise<Reply> {
 
   return {
     speech:
-      "I can show you around, help you mint or redeem, explain APY, compare stablecoins, or set up your own yieldcoin. What would you like?",
+      "I'm Milo, your guide for Titan Exchange on Solana. I can walk you through token swaps, DART routing, Prime mode, slippage, and limit orders. What would you like to explore?",
     needsClarification: true,
   };
 }
 
 function errorReply(data: any): Reply {
-  return { speech: `I couldn't reach Reflect just now: ${data?.error?.message ?? "unknown error"}. Want me to try again?`, needsClarification: true };
+  return { speech: `I couldn't reach Titan just now: ${data?.error?.message ?? "unknown error"}. Want me to try again?`, needsClarification: true };
 }
 
 function extractAmount(text: string): string | undefined {

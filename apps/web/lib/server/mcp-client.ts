@@ -17,25 +17,76 @@ import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
  * leak a child process per reload). A failed connection is dropped so the next call reconnects.
  */
 
+type ServerName = "reflect" | "umbra" | "titan";
 type Conn = { client: Client; transport: "stdio" | "inprocess"; connectedAt: number };
-const g = globalThis as unknown as { __reflectMcp?: Promise<Conn> };
+const g = globalThis as unknown as {
+  __mcpConns?: Record<string, Promise<Conn> | undefined>;
+  __reflectMcp?: Promise<Conn>;
+};
+if (!g.__mcpConns) g.__mcpConns = {};
 
-async function connect(): Promise<Conn> {
+async function connectServer(server: ServerName): Promise<Conn> {
   const mode = process.env.MCP_TRANSPORT === "inprocess" ? "inprocess" : "stdio";
-  const client = new Client({ name: "reflect-companion-web", version: "0.1.0" });
+  const client = new Client({ name: `web-companion-${server}`, version: "0.1.0" });
 
+  if (server === "titan") {
+    if (mode === "inprocess") {
+      const { createTitanMcpServer } = await import("@companion/titan-mcp/server");
+      const { server: mcpServer } = createTitanMcpServer();
+      const [a, b] = InMemoryTransport.createLinkedPair();
+      await Promise.all([mcpServer.connect(a), client.connect(b)]);
+    } else {
+      const serverDir = path.resolve(process.cwd(), "../../packages/titan-mcp");
+      const transport = new StdioClientTransport({
+        command: process.execPath,
+        args: ["--import", "tsx", path.join(serverDir, "src/bin.ts")],
+        cwd: serverDir,
+        env: { PATH: process.env.PATH ?? "" },
+        stderr: "inherit",
+      });
+      transport.onclose = () => {
+        if (g.__mcpConns) g.__mcpConns.titan = undefined;
+      };
+      await client.connect(transport);
+    }
+    return { client, transport: mode, connectedAt: Date.now() };
+  }
+
+  if (server === "umbra") {
+    if (mode === "inprocess") {
+      const { createUmbraMcpServer } = await import("@companion/umbra-mcp");
+      const { server: mcpServer } = createUmbraMcpServer();
+      const [a, b] = InMemoryTransport.createLinkedPair();
+      await Promise.all([mcpServer.connect(a), client.connect(b)]);
+    } else {
+      const serverDir = path.resolve(process.cwd(), "../../packages/umbra-mcp");
+      const transport = new StdioClientTransport({
+        command: process.execPath,
+        args: ["--import", "tsx", path.join(serverDir, "src/bin.ts")],
+        cwd: serverDir,
+        env: { PATH: process.env.PATH ?? "" },
+        stderr: "inherit",
+      });
+      transport.onclose = () => {
+        if (g.__mcpConns) g.__mcpConns.umbra = undefined;
+      };
+      await client.connect(transport);
+    }
+    return { client, transport: mode, connectedAt: Date.now() };
+  }
+
+  // Fallback: reflect server
   if (mode === "inprocess") {
     const { createReflectMcpServer, configFromEnv } = await import("@companion/mcp-server");
-    const server = createReflectMcpServer(configFromEnv());
+    const mcpServer = createReflectMcpServer(configFromEnv());
     const [a, b] = InMemoryTransport.createLinkedPair();
-    await Promise.all([server.connect(a), client.connect(b)]);
+    await Promise.all([mcpServer.connect(a), client.connect(b)]);
   } else {
     const serverDir = path.resolve(process.cwd(), "../../packages/mcp-server");
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: ["--import", "tsx", path.join(serverDir, "src/bin.ts")],
       cwd: serverDir,
-      // Pass only what the server needs. No LLM keys reach the MCP process.
       env: {
         PATH: process.env.PATH ?? "",
         REFLECT_API_BASE_URL: process.env.REFLECT_API_BASE_URL ?? "",
@@ -45,6 +96,7 @@ async function connect(): Promise<Conn> {
       stderr: "inherit",
     });
     transport.onclose = () => {
+      if (g.__mcpConns) g.__mcpConns.reflect = undefined;
       g.__reflectMcp = undefined;
     };
     await client.connect(transport);
@@ -52,14 +104,16 @@ async function connect(): Promise<Conn> {
   return { client, transport: mode, connectedAt: Date.now() };
 }
 
-export function getMcp(): Promise<Conn> {
-  if (!g.__reflectMcp) {
-    g.__reflectMcp = connect().catch((err) => {
-      g.__reflectMcp = undefined;
+export function getMcp(server: ServerName = "titan"): Promise<Conn> {
+  if (!g.__mcpConns![server]) {
+    g.__mcpConns![server] = connectServer(server).catch((err) => {
+      g.__mcpConns![server] = undefined;
+      if (server === "reflect") g.__reflectMcp = undefined;
       throw err;
     });
+    if (server === "reflect") g.__reflectMcp = g.__mcpConns![server];
   }
-  return g.__reflectMcp;
+  return g.__mcpConns![server]!;
 }
 
 export interface ToolOutcome<T = Record<string, any>> {
@@ -69,11 +123,18 @@ export interface ToolOutcome<T = Record<string, any>> {
   tool: string;
 }
 
+function resolveServerForTool(tool: string): ServerName {
+  if (tool.startsWith("titan_")) return "titan";
+  if (tool.startsWith("umbra_")) return "umbra";
+  return "titan";
+}
+
 /** Call a tool and return its structured content. Transport failures become `ok:false`, never throws. */
 export async function callTool<T = Record<string, any>>(tool: string, args: Record<string, unknown> = {}): Promise<ToolOutcome<T>> {
   const started = Date.now();
+  const server = resolveServerForTool(tool);
   try {
-    const { client } = await getMcp();
+    const { client } = await getMcp(server);
     const res = (await client.callTool({ name: tool, arguments: args }, undefined, { timeout: 20_000 })) as {
       isError?: boolean;
       structuredContent?: T;
@@ -82,17 +143,15 @@ export async function callTool<T = Record<string, any>>(tool: string, args: Reco
     const data = (res.structuredContent ?? safeJson(res.content?.[0]?.text) ?? {}) as T;
     return { ok: !res.isError, data, ms: Date.now() - started, tool };
   } catch (err) {
-    // A slow tool is not a dead server: keep the connection on timeouts. Only drop it (so the next
-    // call respawns the server) when the transport itself failed.
     const timedOut = err instanceof McpError && err.code === ErrorCode.RequestTimeout;
-    if (!timedOut) g.__reflectMcp = undefined;
+    if (!timedOut && g.__mcpConns) g.__mcpConns[server] = undefined;
     return {
       ok: false,
       data: {
         ok: false,
         error: timedOut
-          ? { code: "TIMEOUT", message: "Reflect is responding slowly right now", retryable: true }
-          : { code: "MCP_UNAVAILABLE", message: "The Reflect MCP server is not reachable", retryable: true },
+          ? { code: "TIMEOUT", message: `${server} is responding slowly right now`, retryable: true }
+          : { code: "MCP_UNAVAILABLE", message: `The ${server} MCP server is not reachable`, retryable: true },
       } as T,
       ms: Date.now() - started,
       tool,
@@ -100,8 +159,8 @@ export async function callTool<T = Record<string, any>>(tool: string, args: Reco
   }
 }
 
-export async function listTools() {
-  const { client, transport } = await getMcp();
+export async function listTools(server: ServerName = "titan") {
+  const { client, transport } = await getMcp(server);
   const { tools } = await client.listTools();
   return { tools, transport };
 }
