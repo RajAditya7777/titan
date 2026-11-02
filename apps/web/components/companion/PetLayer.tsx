@@ -18,6 +18,8 @@ const SLEEP_AFTER_MS = 20_000;
 const WAKE_LINES = ["Huh? I'm up, I'm up!", "Oh! You're back 😺", "Was I asleep? Never.", "Yawn… what did I miss?"];
 /** Walking pace across the screen: brisk for a small pet, slow enough to see the steps. */
 const WALK_PX_PER_SEC = 340;
+/** Seconds of crouch before a walk starts; matches Pet's ANTICIPATE. */
+const ANTICIPATE_S = 0.14;
 
 /**
  * Renders the pet, spotlight and speech bubble in a fixed overlay above the app.
@@ -285,24 +287,33 @@ export function PetLayer() {
   // long. A spring glide (fast start, long slide) with legs on a fixed timer read as an image moving.
   const prevPos = useRef(pos);
   const travelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const prevY = useRef(0);
+  const [hop, setHop] = useState<{ id: number; h: number; secs: number } | null>(null);
   const dist = Math.hypot(pos.x - prevPos.current.x, pos.y - prevPos.current.y);
   const walkSecs = Math.min(2.4, Math.max(0.5, dist / WALK_PX_PER_SEC));
   const walkTransition = useRef<object>({ type: "tween", duration: 0.3, ease: "easeOut" });
-  if (dist >= 24) walkTransition.current = { type: "tween", duration: walkSecs, ease: [0.45, 0, 0.55, 1] };
+  // The delay is the anticipation crouch (Pet's ANTICIPATE): it gathers itself, then sets off.
+  if (dist >= 24) walkTransition.current = { type: "tween", duration: walkSecs, ease: [0.45, 0, 0.55, 1], delay: ANTICIPATE_S };
   else if (dist > 0) walkTransition.current = { type: "tween", duration: 0.25, ease: "easeOut" }; // small nudges (scroll tracking)
   useEffect(() => {
     const dx = pos.x - prevPos.current.x;
     const d = Math.hypot(dx, pos.y - prevPos.current.y);
+    prevY.current = pos.y - prevPos.current.y;
     prevPos.current = { x: pos.x, y: pos.y };
     if (d < 24) return;
     if (Math.abs(dx) > 4) setHeading(dx < 0 ? -1 : 1);
+    const secs = Math.min(2.4, Math.max(0.5, d / WALK_PX_PER_SEC));
+    // A long climb or drop is a jump with an arc, not a glide straight up the screen.
+    const dy = prevY.current;
+    setHop(Math.abs(dy) > 140 ? { id: Date.now(), h: Math.min(72, 26 + Math.abs(dy) * 0.12), secs } : null);
     setTravelling(true);
     clearTimeout(travelTimer.current);
-    travelTimer.current = setTimeout(() => setTravelling(false), Math.min(2.4, Math.max(0.5, d / WALK_PX_PER_SEC)) * 1000);
+    travelTimer.current = setTimeout(() => setTravelling(false), (secs + ANTICIPATE_S) * 1000);
   }, [pos.x, pos.y]);
 
   const shownState =
-    travelling && petState === "idle" && !reaction
+    // Walking always wins while it travels (legs, sway, head bob); a click's reaction plays on arrival.
+    travelling && petState === "idle"
       ? "moving"
       : hover && petState === "idle" && !placement && !reaction
         ? "hover"
@@ -447,7 +458,11 @@ export function PetLayer() {
         onMouseLeave={() => setHover(false)}
         onClick={() => setPanelOpen(!panelOpen)}
       >
-        <div>
+        <motion.div
+          key={hop?.id ?? "ground"}
+          animate={hop && !reduceMotion ? { y: [0, -hop.h, 0] } : { y: 0 }}
+          transition={hop ? { duration: hop.secs, delay: ANTICIPATE_S, times: [0, 0.5, 1], ease: ["easeOut", "easeIn"] } : { duration: 0 }}
+        >
           {page.startsWith("jup_") ? (
             <AstroCat
               state={shownState}
@@ -471,7 +486,7 @@ export function PetLayer() {
             size={PET.width}
           />
           )}
-        </div>
+        </motion.div>
         {/* attention dot when idle & closed: there is help available */}
         {!panelOpen && petState === "idle" && !voice.listening && (
           <span className="absolute right-2 top-3 h-3 w-3 animate-ping rounded-full bg-[var(--accent-2)] opacity-60" />
