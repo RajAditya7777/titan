@@ -541,7 +541,7 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
       try {
         // The companion looks before it answers: visible text always, a screenshot on Umbra pages
         // (and elsewhere when the question is about the screen).
-        const looks = pageRef.current.startsWith("umbra_") || pageRef.current.startsWith("jup_") || ASKS_TO_LOOK.test(utterance);
+        const looks = pageRef.current.startsWith("umbra_") || pageRef.current.startsWith("jup_") || pageRef.current.startsWith("titan_") || ASKS_TO_LOOK.test(utterance);
         const pageText = readVisibleText();
         const screenshot = looks ? await captureViewport() : null;
         if (screenshot) addMessage("system", "Looked at your screen");

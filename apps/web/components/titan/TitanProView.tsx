@@ -273,6 +273,7 @@ export function TitanProView() {
             <button
               key={cat}
               type="button"
+              data-companion="titan-pro-category"
               onClick={() => {
                 setSelectedCategory(cat);
                 showToast(`Filter: ${cat}`, "info");
@@ -312,6 +313,7 @@ export function TitanProView() {
                 <button
                   key={tok.symbol}
                   type="button"
+              data-companion="titan-pro-token" data-token={tok.symbol}
                   onClick={() => {
                     setSelectedToken(tok);
                     showToast(`Selected ${tok.symbol} (${tok.name})`, "info");
@@ -429,6 +431,7 @@ export function TitanProView() {
             </div>
             <div className="flex items-center gap-2 pl-2 border-l border-[#20201d]">
               <Star
+                data-companion="titan-pro-star"
                 onClick={() => toggleWatchlist(curToken.symbol)}
                 className={`h-4 w-4 cursor-pointer transition-colors ${
                   isWatchlisted(curToken.symbol) ? "text-[#f2d363] fill-current" : "text-[#78766d] hover:text-[#f2d363]"
@@ -474,6 +477,7 @@ export function TitanProView() {
               <button
                 key={tf}
                 type="button"
+              data-companion="titan-pro-timeframe"
                 onClick={() => {
                   setTimeframe(tf);
                   showToast(`Timeframe changed to ${tf}`, "info");
@@ -488,6 +492,7 @@ export function TitanProView() {
             <div className="h-3 w-[1px] bg-[#2b2927] mx-1" />
             <button
               type="button"
+              data-companion="titan-pro-indicators"
               onClick={() => {
                 setShowIndicators(!showIndicators);
                 showToast(!showIndicators ? "Technical Indicators (EMA Ribbon) ON" : "Indicators OFF", "info");
@@ -913,6 +918,7 @@ export function TitanProView() {
           <div className="flex items-center gap-1">
             <button
               type="button"
+              data-companion="titan-pro-mode-market"
               onClick={() => {
                 setOrderType("market");
                 showToast("Order type: Market", "info");
@@ -925,6 +931,7 @@ export function TitanProView() {
             </button>
             <button
               type="button"
+              data-companion="titan-pro-mode-limit"
               onClick={() => {
                 setOrderType("limit");
                 showToast("Order type: Limit", "info");
@@ -937,6 +944,7 @@ export function TitanProView() {
             </button>
             <button
               type="button"
+              data-companion="titan-pro-mode-slice"
               onClick={() => {
                 setOrderType("slice");
                 showToast("Order type: Slice", "info");
@@ -971,6 +979,7 @@ export function TitanProView() {
         <div className="grid grid-cols-2 gap-1.5 my-3 rounded-xl bg-[#20201d] p-1 border border-[#2b2927]">
           <button
             type="button"
+            data-companion="titan-pro-side-buy"
             onClick={() => setOrderSide("buy")}
             className={`rounded-lg py-1.5 text-xs font-semibold transition-all cursor-pointer ${
               orderSide === "buy" ? "bg-[#18392b] text-[#00d692] shadow-sm" : "text-[#78766d] hover:text-white"
@@ -980,6 +989,7 @@ export function TitanProView() {
           </button>
           <button
             type="button"
+            data-companion="titan-pro-side-sell"
             onClick={() => setOrderSide("sell")}
             className={`rounded-lg py-1.5 text-xs font-semibold transition-all cursor-pointer ${
               orderSide === "sell" ? "bg-[#3d1818] text-[#f34f6a] shadow-sm" : "text-[#78766d] hover:text-white"
