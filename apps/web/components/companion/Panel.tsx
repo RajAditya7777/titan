@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronLeft, ChevronRight, Mic, MicOff, RotateCcw, Send, Square, Volume2, VolumeX, X, Wand2, Cpu, AlertTriangle, ScanEye } from "lucide-react";
 import { PAGES, type PageId } from "@/lib/companion/registry";
 import { UMBRA_WEB_SUGGESTIONS } from "@/lib/products/umbra/web";
-import { JUP_SUGGESTIONS } from "@/lib/products/jupiter/web";
+import { JUP_QUICK, JUP_SUGGESTIONS } from "@/lib/products/jupiter/web";
 import { useCompanion } from "./CompanionProvider";
 
 const SUGGESTIONS = [
@@ -25,9 +25,11 @@ export const themeFor = (page: PageId) => (isUmbraWeb(page) ? "umbra-ui" : page.
 
 export function CompanionPanel() {
   const c = useCompanion();
+  const compact = c.page.startsWith("jup_");
   return (
     <>
-      <AnimatePresence>{c.panelOpen && !c.run && <FullPanel key="full" />}</AnimatePresence>
+      {compact && <HelpNudge />}
+      <AnimatePresence>{c.panelOpen && !c.run && (compact ? <HelpPopup key="popup" /> : <FullPanel key="full" />)}</AnimatePresence>
       {/* `run` goes in as a prop, not read from context: while the bar animates out, AnimatePresence
           re-renders the exiting copy with its last props, and context `run` is already null by then. */}
       <AnimatePresence>{c.run && <GuidanceBar key="bar" run={c.run} />}</AnimatePresence>
@@ -52,6 +54,164 @@ function MicButton({ big = false }: { big?: boolean }) {
       {on && <span className="absolute inset-0 animate-ping rounded-full bg-[var(--accent-2)]/40" />}
       {on ? <Mic size={big ? 24 : 18} /> : <MicOff size={big ? 22 : 16} className="opacity-90" />}
     </button>
+  );
+}
+
+/**
+ * "Hi, need any help?": a small greeting that pops up beside the pet on its own, not a chat window.
+ * Shown once per visit; "Yes" opens the compact popup, "No thanks" tucks it away.
+ */
+function HelpNudge() {
+  const c = useCompanion();
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem("astro.nudge") === "1";
+    } catch {
+      /* private mode: just show it */
+    }
+    if (seen) return;
+    const t = setTimeout(() => setShow(true), 2_200);
+    return () => clearTimeout(t);
+  }, []);
+  const close = () => {
+    setShow(false);
+    try {
+      sessionStorage.setItem("astro.nudge", "1");
+    } catch {
+      /* per-visit convenience only */
+    }
+  };
+  const visible = show && !c.panelOpen && !c.run && c.petState === "idle";
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          key="nudge"
+          data-testid="help-nudge"
+          data-capture-skip
+          className="jup-ui fixed bottom-[116px] right-6 z-[56] w-[272px] rounded-2xl border border-[var(--line-strong)] bg-[var(--surface)] p-3.5 text-[var(--text)] shadow-[0_18px_44px_-14px_rgba(0,0,0,0.7)]"
+          initial={{ opacity: 0, y: 14, scale: 0.94 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 300, damping: 22 }}
+        >
+          <p className="text-[14px] font-semibold">Hi! 👋 Do you need any help?</p>
+          <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">I can show you around Jupiter or answer a question.</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                c.setPanelOpen(true);
+              }}
+              className="rounded-full bg-[var(--accent)] px-3.5 py-1.5 text-[12.5px] font-semibold text-[var(--on-accent)] hover:brightness-110"
+            >
+              Yes, please
+            </button>
+            <button type="button" onClick={close} className="rounded-full border border-[var(--line-strong)] px-3.5 py-1.5 text-[12.5px] text-[var(--muted)] hover:text-[var(--text)]">
+              I&apos;m good
+            </button>
+          </div>
+          <span className="absolute -bottom-1.5 right-12 h-3 w-3 rotate-45 border-b border-r border-[var(--line-strong)] bg-[var(--surface)]" />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** The compact help popup: the latest answer and a few quick asks, not a scrolling chat log. */
+function HelpPopup() {
+  const c = useCompanion();
+  const [draft, setDraft] = useState("");
+  const lastAnswer = [...c.messages].reverse().find((m) => m.role === "assistant");
+  const lastQuestion = [...c.messages].reverse().find((m) => m.role === "user");
+  const thinking = c.petState === "thinking";
+  // A new page starts a fresh conversation: last page's answer isn't about what's on screen now.
+  const [fromId, setFromId] = useState(() => c.messages.at(-1)?.id ?? 0);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) return void (firstRender.current = false);
+    setFromId(c.messages.at(-1)?.id ?? 0);
+  }, [c.page]); // eslint-disable-line react-hooks/exhaustive-deps
+  const answered = !!lastAnswer && !!lastQuestion && lastQuestion.id > fromId && lastAnswer.id > lastQuestion.id;
+  const submit = (text: string) => {
+    if (!text.trim()) return;
+    setDraft("");
+    c.input(text);
+  };
+  return (
+    <motion.section
+      aria-label="Astro, Jupiter guide"
+      data-testid="companion-panel"
+      data-capture-skip
+      className="jup-ui fixed bottom-[116px] right-6 z-[55] flex max-h-[min(520px,calc(100vh-150px))] w-[min(340px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-[var(--line-strong)] bg-[var(--surface)] text-[var(--text)] shadow-[0_24px_60px_-18px_rgba(0,0,0,0.75)]"
+      initial={{ opacity: 0, y: 18, scale: 0.94 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 12, scale: 0.96 }}
+      transition={{ type: "spring", stiffness: 300, damping: 24 }}
+    >
+      <header className="flex items-center gap-2 px-4 pt-3.5">
+        <span className="text-[15px]">🚀</span>
+        <p className="flex-1 text-[13.5px] font-semibold">Astro</p>
+        <button type="button" onClick={() => c.setPanelOpen(false)} aria-label="Close" className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]">
+          <X size={15} />
+        </button>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-1 pt-2" data-testid="companion-messages">
+        {thinking ? (
+          <div className="flex items-center gap-1.5 py-3" aria-label="Thinking">
+            {[0, 1, 2].map((i) => (
+              <motion.span key={i} className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" animate={{ opacity: [0.2, 1, 0.2], y: [0, -2, 0] }} transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }} />
+            ))}
+            <span className="ml-1 text-[12px] text-[var(--muted)]">Looking at your screen…</span>
+          </div>
+        ) : answered ? (
+          <>
+            <p className="truncate text-[11.5px] text-[var(--muted)]">“{lastQuestion!.text}”</p>
+            <p className="mt-1.5 text-[14px] leading-relaxed">{lastAnswer!.text}</p>
+          </>
+        ) : (
+          <>
+            <p className="text-[15px] font-semibold">Hi! 👋 Do you need any help?</p>
+            <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">Pick one, or ask me anything about this page.</p>
+          </>
+        )}
+        {!thinking && !answered && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {JUP_QUICK.map((q) => (
+              <button key={q} type="button" onClick={() => submit(q)} className="rounded-full border border-[var(--line-strong)] px-2.5 py-1 text-left text-[12px] text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {c.voice.interim && <p className="px-4 pb-1 text-right text-[12.5px] italic text-[var(--accent)]">{c.voice.interim}…</p>}
+      <form
+        className="mt-1 flex items-center gap-1.5 border-t border-[var(--line)] px-3 py-2.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit(draft);
+        }}
+      >
+        <MicButton />
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Ask Astro anything…"
+          aria-label="Message the companion"
+          data-testid="companion-input"
+          className="h-9 min-w-0 flex-1 rounded-full border border-[var(--line-strong)] bg-[var(--bg)] px-3.5 text-[13px] text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+        />
+        <button type="submit" disabled={!draft.trim()} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-[var(--on-accent)] enabled:hover:brightness-110 disabled:opacity-30" aria-label="Send">
+          <Send size={14} />
+        </button>
+      </form>
+    </motion.section>
   );
 }
 

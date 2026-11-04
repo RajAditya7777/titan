@@ -79,7 +79,7 @@ export function respondTo(e: PageEvent): PetResponse | null {
     case "jup-perps-submit":
       return { reaction: "hearts", quip: "Strap in, astronaut!", visit: true };
     case "jup-approve":
-      return { reaction: "hop", quip: "Launching… 🚀", visit: true };
+      return { reaction: "launch", quip: "3, 2, 1… liftoff! 🚀", visit: true };
     case "jup-perps-long":
       return { reaction: "cheer", quip: "Up only? 📈", visit: true };
     case "jup-perps-short":

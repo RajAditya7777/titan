@@ -123,7 +123,7 @@ export function rollPull(pack: Pack, rnd: () => number = Math.random): Pull {
 }
 
 export const GACHA_KNOWLEDGE = `JUPITER GACHA (jup.ag/gacha) — exact facts:
-- What it is: buy digital packs and "open" them to pull a real, professionally graded collectible card (PSA, CGC or BGS slabs). Cards are tokenized, so you own them on Solana and can trade them. "Guaranteed Authenticity". Paid in USDC. It is NOT a token lottery and does not pay out tokens.
+- Describe it as a pack-opening service for real graded collectibles (not a "card game" and not a token lottery). What it is: buy digital packs and "open" them to pull a real, professionally graded collectible card (PSA, CGC or BGS slabs). Cards are tokenized, so you own them on Solana and can trade them. "Guaranteed Authenticity". Paid in USDC. It is NOT a token lottery and does not pay out tokens.
 - Three tabs: Packs (buy and open), Collection (your graded items, with Items, Activity and Shipping), Marketplace (buy and sell graded, tokenized cards with other collectors).
 - Categories: Spotlight, All packs, Pokémon (new), Watches, One Piece, Sport, Riftbound, Dragon Ball, Mixed.
 - Packs right now: Void $50 (Pokémon, limited 7 days, grails worth up to $50K, a 1000x pull), Lucky $100 (Pokémon, "luck-of-the-draw chase pulls"), Trick or Treat $250 (Pokémon), Angels $300 (Pokémon), Black Magic $444 (Mixed), Immortal $5,000 (Pokémon).
@@ -135,4 +135,5 @@ export const GACHA_KNOWLEDGE = `JUPITER GACHA (jup.ag/gacha) — exact facts:
 - Latest Pulls show big hits, e.g. a 2006 Charizard Gold Star CGC 10 at 99,000 USDC (+98,900%) and a 2010 Espeon-Holo PSA 10 at 67,000; these are rare outliers.
 - Opening on the page: drag to spin the packs and tap one to open. Connect a wallet to open.
 - Honest framing: it's chance-based. Most pulls are Common. Only spend what you're happy to lose; buyback at 93% means selling right away loses about 7%.
+- When asked to explain Gacha or "I'm new to Gacha", ALWAYS cover these four points in about 4 short sentences: (1) what it is: a pack-opening service for real graded collectible cards, paid in USDC, tokenized on Solana; (2) how it works: pick a pack, check its Expected value and odds, open it to pull one card; (3) the honest part: it's chance-based and most pulls are Common, worth less than the pack price; (4) your options: sell back at 93% within 3 days or use Turbo to auto-sell Commons, and only spend what you're happy to lose.
 - In this demo, opening is simulated with play USDC; no real card or money moves.`;

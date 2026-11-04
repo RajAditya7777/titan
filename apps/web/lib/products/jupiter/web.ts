@@ -36,6 +36,14 @@ export function liquidationPrice(side: "long" | "short", entry: number, leverage
   return side === "long" ? entry * (1 - move) : entry * (1 + move);
 }
 
+/** The few quick asks shown in Astro's small help popup. */
+export const JUP_QUICK = [
+  "Show me around Jupiter",
+  "My swap failed. What went wrong?",
+  "Explain Gacha, I'm new",
+  "Help me swap 1 SOL for USDC",
+];
+
 export const JUP_SUGGESTIONS = [
   "What is Gacha and how does it work?",
   "I'm new. Show me around Jupiter",
@@ -55,6 +63,12 @@ export const JUPITER_KNOWLEDGE = `JUPITER FACTS (jup.ag, "The Home of Onchain Fi
 - Portfolio: track holdings, DeFi positions, yield, PnL and airdrops across 198 Solana protocols; view a wallet address or demo wallets (DeFi whale, JUP staker, Airdrop farmer); multi-wallet groups, activity history, address book, airdrop checker, yield estimate.
 - Other products in the sidebar: Spot (token markets, stocks), Predict (prediction markets), Gacha, Bridge (50+ chains, beta), YOLO (beta), Lend (Earn vaults, Multiply), Offerbook, Stake SOL, Stake JUP, Send (crypto as a link), Deposit, Mobile app.
 - JUP is Jupiter's token; stakers vote in the DAO.
+- Common problems and what usually causes them (general guidance, not a diagnosis of a specific transaction):
+  * "I got less than the quote": the quote is an estimate. Price impact (your size versus liquidity), slippage tolerance and fees all come off the output, and the price can move between quote and execution. Check the price impact row, try a smaller size or split the trade, and refresh the quote before swapping. In Ultra mode Jupiter picks slippage for you.
+  * "My swap failed": typical causes are not enough SOL left for network fees (and rent for a new token account), the price moving past your slippage while the transaction landed, a stale quote, network congestion, or the wallet approval being rejected or timing out. Keep a little SOL, refresh the quote and retry.
+  * "My limit order hasn't filled": it only fills when the market reaches your price or better. It may fill in parts, it can expire, and stablecoins can't be the trigger token.
+  * "I was liquidated on perps": higher leverage puts the liquidation price closer to entry; if the mark price reaches it, the position closes and collateral is lost. Use lower leverage and watch the liquidation price.
+  * Scams: never share a seed phrase, check the site address, and approve only what you expect to see.
 - Safety: slippage protects you from price moves; price impact grows with trade size versus liquidity. Never share a seed phrase. Every transaction is approved in the user's own wallet.`;
 
 export interface JupState {

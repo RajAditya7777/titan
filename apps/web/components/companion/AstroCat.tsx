@@ -100,6 +100,8 @@ const GESTURES: Partial<Record<Reaction | "celebrating" | "moving" | "speaking" 
   cheer: { left: { rotate: [120, 150, 120], transition: loop(0.3, 3) }, right: { rotate: [-120, -150, -120], transition: loop(0.3, 3) } },
   hearts: { left: { rotate: 30 }, right: { rotate: -30 } },
   hop: { left: { rotate: 40 }, right: { rotate: -40 } },
+  // Arms stretched up like a rocket.
+  launch: { left: { rotate: 165, transition: { type: "spring", stiffness: 160, damping: 12 } }, right: { rotate: -165, transition: { type: "spring", stiffness: 160, damping: 12 } } },
   wiggle: { left: { rotate: [-15, 15, -15], transition: loop(0.25, 4) }, right: { rotate: [15, -15, 15], transition: loop(0.25, 4) } },
   giggle: { left: { rotate: [10, 25, 10], transition: loop(0.3, 3) }, right: { rotate: [-10, -25, -10], transition: loop(0.3, 3) } },
   roll: { left: { rotate: [-30, 30, -30], transition: loop(0.4, 2) }, right: { rotate: [30, -30, 30], transition: loop(0.4, 2) } },
@@ -139,6 +141,8 @@ const REACTION_ANIM: Partial<Record<Reaction, TargetAndTransition>> = {
   // A spin on the spot: the sprite turn (squeeze edge-on, flip, back) with a float up.
   roll: { scaleX: [1, 0.12, -1, 0.12, 1], y: [0, -6, -10, -6, 0], transition: { duration: 0.9, ease: "easeInOut" } },
   cheer: { y: [0, 3, -14, 0], transition: { duration: 0.8 } },
+  // Countdown: crouch, boost up with the thrusters blazing, hover, then drift back down and settle.
+  launch: { y: [0, 6, -58, -58, -20, 0], scaleY: [1, 0.86, 1.12, 1.04, 1.02, 0.94], transition: { duration: 1.5, times: [0, 0.16, 0.42, 0.62, 0.85, 1], ease: "easeInOut" } },
 };
 
 function tailSwish(state: string, happy: boolean): TargetAndTransition {
@@ -261,7 +265,7 @@ export function AstroCat({
 
         {/* boot thrusters while flying */}
         <AnimatePresence>
-          {flying &&
+          {(flying || reaction === "launch") &&
             LEGS.map(([col], i) => (
               <motion.g key={col} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <motion.rect x={(col + 1) * U} y={FEET_Y} width={2 * U} height={8} fill="#ffb347" animate={{ height: [6, 14, 8, 12] }} transition={{ duration: 0.3, repeat: Infinity, delay: i * 0.08 }} />
