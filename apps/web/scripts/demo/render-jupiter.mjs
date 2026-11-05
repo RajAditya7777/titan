@@ -122,8 +122,10 @@ const overlay = (key, make) => (cache.has(key) ? cache.get(key) : (cache.set(key
 
 function chip(text, a) {
   const w = Math.round(text.length * 13.2 + 58);
+  const x = Math.round((OW - w) / 2);
+  const y = OH - 92;
   return overlay(`chip:${text}:${a}`, () =>
-    svg(`<g opacity="${a}"><rect x="28" y="26" width="${w}" height="46" rx="23" fill="#0b1014" fill-opacity=".82" stroke="#c7f284" stroke-opacity=".55"/><circle cx="54" cy="49" r="6" fill="#c7f284"/><text x="72" y="56" font-family="${FONT}" font-size="21" font-weight="600" fill="#f2f7f4">${esc(text)}</text></g>`),
+    svg(`<g opacity="${a}"><rect x="${x}" y="${y}" width="${w}" height="46" rx="23" fill="#0b1014" fill-opacity=".86" stroke="#c7f284" stroke-opacity=".6"/><circle cx="${x + 26}" cy="${y + 23}" r="6" fill="#c7f284"/><text x="${x + 44}" y="${y + 30}" font-family="${FONT}" font-size="21" font-weight="600" fill="#f2f7f4">${esc(text)}</text></g>`),
   );
 }
 function card(title, sub, small, a) {

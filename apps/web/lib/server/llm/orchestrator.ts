@@ -48,7 +48,7 @@ ${GACHA_KNOWLEDGE}
 Rules:
 - Answer only from these facts and what you see. If something isn't covered, say you're not sure rather than guessing.
 - This demo uses a simulated wallet and fixed demo prices. Never ask for keys or seed phrases. You never click, sign or approve: you point, the user acts.
-- If the user asks a question, asks you to explain something, or reports a problem ("explain Gacha", "I'm new to Gacha", "why did I get less than the quote?", "my swap failed"), ANSWER it in 3 to 4 short sentences from the facts and what you see, and do NOT set workflow_id. For "explain X" or "I'm new to X" give a complete beginner overview: what it is, how it works step by step, the main risk, and one tip.
+- If the user asks a question, asks you to explain something, or reports a problem ("explain Gacha", "I'm new to Gacha", "why did I get less than the quote?", "my swap failed"), ANSWER it in 3 to 4 short sentences from the facts and what you see, and do NOT set workflow_id. If they ask how something works, "step by step", how to do it, or which buttons to press (even with "I'm new"), the answer MUST be the button-by-button workflow from the facts above, in order, in 6 short sentences and UNDER 90 words in total, naming the real buttons they will see (be terse: one short clause per step, no filler) (for Jupiter in general, the Swap workflow plus a one-line mention of Gacha); do not give a generic overview instead. These are QUESTIONS: never set workflow_id for them and never answer "let me walk you through"; just speak the steps. For "explain X" or "I'm new to X" (with no mention of steps or buttons) give a complete beginner overview: what it is, how it works step by step, the main risk, and one tip.
 - Whenever the user clearly wants to DO or be shown something ("help me swap", "guide me", "show me around", "open a pack for me") you MUST set workflow_id: jup_swap {amount, inputToken, outputToken} | jup_limit {amount, inputToken, outputToken, price} | jup_perps {side: long|short, amount (USDC collateral), leverage} | jup_portfolio | jup_gacha (open a pack). New users or "show me around": jup_tour. Tokens: SOL, USDC, JUP, USDT, BONK, JitoSOL.
 - To show one thing, set point_target to an element id below. Questions get a spoken answer.
 Page: ${input.page} (${PAGES[input.page].title}). Elements here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
@@ -238,8 +238,16 @@ async function ensureUmbraGuide(input: TurnInput, reply: CompanionReply): Promis
   return planned.workflow ? { ...reply, workflow: planned.workflow, point: undefined } : reply;
 }
 
+/** "How does X work / which buttons do I press" is a question: speak the steps, don't start a walkthrough. */
+const ASKS_HOW = /\b(how (does|do|is|are|can|to)|which buttons?|what buttons?|step by step|button by button|where (do|can) i)\b/i;
+function answerOnly(input: TurnInput, reply: CompanionReply): CompanionReply {
+  if (!isJupiter(input.page) || !reply.workflow) return reply;
+  if (!ASKS_HOW.test(input.utterance) || EXPLICIT_GUIDE.test(input.utterance)) return reply;
+  return { ...reply, workflow: undefined };
+}
+
 export async function runTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {
-  return keepOnDocs(input, await ensureUmbraGuide(input, await answerTurn(input, provider)));
+  return answerOnly(input, keepOnDocs(input, await ensureUmbraGuide(input, await answerTurn(input, provider))));
 }
 
 async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {
@@ -325,7 +333,7 @@ export function finalize(raw: unknown, toolCalls: CompanionReply["toolCalls"], p
   }
   // Explaining a product to a newcomer needs more room than a one-line tip: Jupiter pages get 4 sentences.
   const roomy = page?.startsWith("jup_");
-  const a = { ...parsed.data, speech: speakable(parsed.data.speech, roomy ? { maxSentences: 4, maxChars: 460 } : undefined) };
+  const a = { ...parsed.data, speech: speakable(parsed.data.speech, roomy ? { maxSentences: 8, maxChars: 640 } : undefined) };
   let workflow = a.workflow_id ? buildWorkflow(a.workflow_id, a.workflow_params ?? {}, pageState) : undefined;
 
   if (!workflow && a.custom_steps?.length) {

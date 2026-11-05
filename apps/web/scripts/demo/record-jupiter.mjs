@@ -105,13 +105,13 @@ const rect = async (sel) => {
 };
 
 /** Frames the union of these elements with padding; zoom is derived from how big that union is. */
-async function frame(sels, { pad = 110, maxZ = 2.3, dur = 800 } = {}) {
+async function frame(sels, { pad = 110, maxZ = 2.3, dur = 800, below = 70 } = {}) {
   const rs = (await Promise.all(sels.map(rect))).filter(Boolean);
   if (!rs.length) return;
   const x0 = Math.min(...rs.map((r) => r.x)) - pad;
   const y0 = Math.min(...rs.map((r) => r.y)) - pad;
   const x1 = Math.max(...rs.map((r) => r.x + r.w)) + pad;
-  const y1 = Math.max(...rs.map((r) => r.y + r.h)) + pad;
+  const y1 = Math.max(...rs.map((r) => r.y + r.h)) + pad + below; // room for the bottom caption
   const z = Math.max(1, Math.min(maxZ, W / (x1 - x0), H / (y1 - y0)));
   move({ cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, z }, dur);
 }
@@ -216,124 +216,113 @@ const t0 = now();
 await cdp.send("Page.startScreencast", { format: "jpeg", quality: 92, maxWidth: W, maxHeight: H, everyNthFrame: 1 });
 await page.goto(`${BASE}/jup`, { waitUntil: "networkidle" });
 await sleep(900);
+const PET = '[data-testid="companion-pet"]';
+const PANEL = '[data-testid="companion-panel"]';
+const SWAP_CARD = '[data-companion="jup-swap-card"]';
 
-// 1. Astro says hi
-chapter("Meet Astro: an AI companion for Jupiter");
+/** Types a question into Astro's popup like a person, sends it, and holds while the answer is read out. */
+async function ask(question) {
+  await frame([PANEL, PET], { pad: 40 });
+  await click('[data-testid="companion-input"]');
+  await type(question, 38);
+  await sleep(500);
+  await page.keyboard.press("Enter");
+  await rampUntilAnswer();
+  await frame([PANEL, PET], { pad: 40 });
+  await speakWait();
+}
+
+// 1. A brand-new visitor, on the main swap screen, asks how Jupiter works
+chapter("A new user lands on Jupiter");
 await page.waitForSelector('[data-testid="help-nudge"]', { timeout: 12_000 });
 voice("Hi! Do you need any help?");
-await frame(['[data-testid="help-nudge"]', '[data-testid="companion-pet"]'], { pad: 60 });
+await frame(['[data-testid="help-nudge"]', PET], { pad: 60 });
 await sleep(1500);
 await click('[data-testid="help-nudge"] button:has-text("Yes, please")');
 await sleep(700);
-await frame(['[data-testid="companion-panel"]', '[data-testid="companion-pet"]'], { pad: 50 });
-await sleep(1700);
-await click('[data-testid="companion-panel"] button[aria-label="Close"]');
-wide();
-await sleep(900);
-
-// 2. Reacts to every action
-chapter("It reacts to everything you do");
-await click('[data-companion="jup-connect"]');
-await sleep(300);
-await follow(['[data-testid="companion-pet"]', '[data-companion="jup-wallet-connect"]'], 1600, { maxZ: 1.6 });
-await click('[data-companion="jup-wallet-connect"]');
-wide(700);
-await sleep(1000);
-
-await click('[data-companion="jup-sell-amount"]');
-await frame(['[data-companion="jup-swap-card"]', '[data-testid="companion-pet"]'], { pad: 80 });
-await type("2", 200);
-await follow(['[data-companion="jup-swap-card"]', '[data-testid="companion-pet"]'], 1400, { pad: 80 });
-await type("0", 200); // 20 SOL: more than the wallet holds
-await follow(['[data-companion="jup-swap-card"]', '[data-testid="companion-pet"]'], 1900, { pad: 80 });
-await page.keyboard.press("Backspace");
-await follow(['[data-companion="jup-swap-card"]', '[data-testid="companion-pet"]'], 1100, { pad: 80 });
-await click('[data-companion="jup-flip"]');
-await follow(['[data-companion="jup-swap-card"]', '[data-testid="companion-pet"]'], 1400, { pad: 80 });
-await click('[data-companion="jup-flip"]');
-await follow(['[data-companion="jup-swap-card"]', '[data-testid="companion-pet"]'], 1000, { pad: 80 });
-
-await click('[data-companion="jup-swap-submit"]');
-await follow(['[data-companion="jup-swap-submit"]', '[data-testid="companion-pet"]'], 1200, { pad: 90 });
-await click('[data-companion="jup-approve"]');
-await follow(['[data-testid="companion-pet"]'], 2200, { pad: 190, maxZ: 1.7 });
-await follow(['[data-testid="companion-pet"]'], 2200, { pad: 190, maxZ: 1.7 });
-await page.getByRole("button", { name: "Close", exact: true }).first().click().catch(() => {});
-wide();
-await sleep(900);
-
-// 3. Idle: nap, then wake up
-chapter("Nothing happening? Astro naps");
-// Wait for Astro to be home and idle, then keep still until it is actually asleep (the "z z z" is drawn).
-const atHome = async () => {
-  const r = await rect('[data-testid="companion-pet"]');
-  return !!r && r.x > W - 260 && r.y > H - 260 && /, idle$/.test(await petLabel());
-};
-for (let i = 0; i < 40 && !(await atHome()); i++) await sleep(250);
-await glide(W / 2, 150, 600);
-await page.evaluate(() => (window.__PET_SLEEP_MS = 2500));
-await frame(['[data-testid="companion-pet"]'], { pad: 150, maxZ: 2.4, dur: 1200 });
-const asleep = () => page.evaluate(() => [...document.querySelectorAll('svg[aria-label^="Astro"] text')].some((t) => t.textContent === "z"));
-for (let i = 0; i < 60 && !(await asleep()); i++) await sleep(250);
-await sleep(2200); // hold on the sleeping cat
-await page.evaluate(() => (window.__PET_SLEEP_MS = 1e9));
-await glide(W / 2 + 40, 190, 300); // any movement wakes it
-await sleep(1900);
+chapter("They ask: how does the whole thing work?");
+await ask("I'm new here. How does Jupiter work, and which buttons do I press to swap?");
+await closePopup();
 wide();
 await sleep(500);
 
-// 4. A real problem
-chapter("Ask a real problem");
-await openPopup();
-await frame(['[data-testid="companion-panel"]', '[data-testid="companion-pet"]'], { pad: 40 });
+// 2. Do the swap, and watch the cat
+chapter("Now the swap. Watch Astro react");
+await click('[data-companion="jup-connect"]');
+await sleep(300);
+await follow([PET, '[data-companion="jup-wallet-connect"]'], 1100, { maxZ: 1.6 });
+await click('[data-companion="jup-wallet-connect"]');
+wide(700);
+await sleep(900);
+await click('[data-companion="jup-sell-amount"]');
+await frame([SWAP_CARD, PET], { pad: 80 });
+await type("2", 220);
+await follow([SWAP_CARD, PET], 1100, { pad: 80 });
+await type(".5", 220);
+await follow([SWAP_CARD, PET], 1500, { pad: 80 });
+chapter("Clicking Swap");
+await click('[data-companion="jup-swap-submit"]');
+await follow(['[data-companion="jup-swap-submit"]', PET], 1300, { pad: 90 });
+chapter("Approve in the wallet: liftoff");
+await click('[data-companion="jup-approve"]');
+await follow([PET], 1800, { pad: 190, maxZ: 1.7 });
+await page.waitForSelector("text=Success", { timeout: 10_000 });
+chapter("Swap successful");
+await frame(["text=Success", PET], { pad: 150, maxZ: 1.5, dur: 900 });
+await sleep(2000);
+await page.getByRole("button", { name: "Close", exact: true }).first().click().catch(() => {});
+wide();
+await sleep(700);
+
+// 3. Gacha: a new user asks how it works and which buttons to press
+chapter("Next: Gacha. A new user asks Astro");
+await click('a[title="Gacha"]');
+await page.waitForSelector('[data-companion="jup-gacha-packs"]');
 await sleep(1400);
-await click('[data-testid="companion-panel"] button:has-text("My swap failed. What went wrong?")');
-await rampUntilAnswer();
-await frame(['[data-testid="companion-panel"]', '[data-testid="companion-pet"]'], { pad: 40 });
-await speakWait();
+await openPopup();
+await ask("How does Gacha work? Tell me which buttons to press.");
 await closePopup();
 wide();
 await sleep(600);
 
-// 5. Gacha, explained
-chapter("New to Gacha? Just ask");
-await click('a[title="Gacha"]');
-await page.waitForSelector('[data-companion="jup-gacha-packs"]');
-await sleep(1500);
-await openPopup();
-await frame(['[data-testid="companion-panel"]', '[data-testid="companion-pet"]'], { pad: 40 });
-await click('[data-testid="companion-input"]');
-await type("Explain Gacha, I am new", 40);
+// 4. Follow the steps for real
+chapter("Step 1-2: pick a category and a pack");
+await click('button:has-text("Pokémon")');
 await sleep(500);
-await page.keyboard.press("Enter");
-await rampUntilAnswer();
-await frame(['[data-testid="companion-panel"]', '[data-testid="companion-pet"]'], { pad: 40 });
-await speakWait();
-await closePopup();
-wide();
-await sleep(700);
-
-// 6. Opening packs
-chapter("Open a pack, see the pull");
 await frame(['[data-companion="jup-gacha-packs"]'], { pad: 90, maxZ: 1.7 });
 await click('[data-companion="jup-gacha-packs"] button:has-text("Lucky")');
-await sleep(1100);
+await sleep(1000);
+chapter("Step 3: check the odds");
+await frame(['[data-companion="jup-gacha-ev"]', 'button:has-text("Statistics")'], { pad: 120, maxZ: 1.6 });
+await click('button:has-text("Statistics")');
+await sleep(1700);
+chapter("Step 4-5: choose 2 packs and open");
 await click('button[aria-label="More packs"]');
-await click('button[aria-label="More packs"]');
+await sleep(600);
 await frame(['[data-companion="jup-gacha-open"]', '[data-companion="jup-gacha-ev"]'], { pad: 90 });
 await sleep(700);
 await click('[data-companion="jup-gacha-open"]');
 await sleep(900);
 await click('[data-companion="jup-approve"]');
 wide(900);
-await sleep(1800);
-await frame(['[data-testid="companion-pet"]', 'button:has-text("Keep and close")'], { pad: 120, maxZ: 1.5, dur: 1000 });
+await sleep(1900);
+chapter("Step 6: the pulls flip up");
+await frame(['button:has-text("Keep and close")', PET], { pad: 120, maxZ: 1.4, dur: 1000 });
 await sleep(2000);
-await follow(['[data-testid="companion-pet"]'], 2000, { pad: 190, maxZ: 1.7 });
+chapter("Step 7: sell one back for USDC");
+await click('button:has-text("Sell back")');
+await follow([PET, 'button:has-text("Keep and close")'], 1800, { pad: 150, maxZ: 1.5 });
+await click('button:has-text("Keep and close")');
+wide();
 await sleep(500);
+chapter("The other card stays in your Collection");
+await click('button:has-text("Collection")');
+await sleep(700);
+await frame(["h1", PET], { pad: 120, maxZ: 1.3 });
+await sleep(2200);
 
 chapter("__end__");
-await sleep(1200);
+await sleep(1000);
 await cdp.send("Page.stopScreencast");
 const tEnd = now();
 await browser.close();

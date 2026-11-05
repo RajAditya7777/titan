@@ -38,9 +38,9 @@ export function liquidationPrice(side: "long" | "short", entry: number, leverage
 
 /** The few quick asks shown in Astro's small help popup. */
 export const JUP_QUICK = [
-  "Show me around Jupiter",
-  "My swap failed. What went wrong?",
-  "Explain Gacha, I'm new",
+  "I'm new. How does Jupiter work?",
+  "How do I swap, button by button?",
+  "How does Gacha work? Which buttons?",
   "Help me swap 1 SOL for USDC",
 ];
 
@@ -69,6 +69,7 @@ export const JUPITER_KNOWLEDGE = `JUPITER FACTS (jup.ag, "The Home of Onchain Fi
   * "My limit order hasn't filled": it only fills when the market reaches your price or better. It may fill in parts, it can expire, and stablecoins can't be the trigger token.
   * "I was liquidated on perps": higher leverage puts the liquidation price closer to entry; if the mark price reaches it, the position closes and collateral is lost. Use lower leverage and watch the liquidation price.
   * Scams: never share a seed phrase, check the site address, and approve only what you expect to see.
+- Swap workflow, button by button (this is the order to explain it in): 1) Tap Connect at the top right, then pick the demo wallet. 2) On the Swap card, check the Sell token (top) and the Buy token (bottom); tap a token to change it, or the arrows between them to flip. 3) Type the amount in the Sell box. A red warning means you typed more than your balance. 4) Read the quote: the amount you receive, the route and the price impact. 5) Tap Swap, review the details, then tap Approve to sign in your wallet. 6) A success message confirms it and your balances update. Astro never signs for you.
 - Safety: slippage protects you from price moves; price impact grows with trade size versus liquidity. Never share a seed phrase. Every transaction is approved in the user's own wallet.`;
 
 export interface JupState {
