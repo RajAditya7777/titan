@@ -66,8 +66,10 @@ const outSec = (abs) => {
 const ease = (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
 
 // ───────── camera ─────────
+const NO_ZOOM = process.env.NO_ZOOM === "1"; // plain full-screen recording, no camera moves
 function stateAt(t) {
   let s = { cx: W / 2, cy: H / 2, z: 1 };
+  if (NO_ZOOM) return s;
   for (const m of camera) {
     if (m.t0 > t) break;
     const p = Math.min(1, (t - m.t0) / m.dur);
