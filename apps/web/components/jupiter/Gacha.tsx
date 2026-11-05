@@ -166,7 +166,7 @@ export function GachaView() {
                     {problem ?? `Open ${s.gachaCount} pack${Number(s.gachaCount) > 1 ? "s" : ""} · ${usd(pack.price * Number(s.gachaCount))} USDC`}
                   </button>
                 ) : (
-                  <button type="button" onClick={() => setJup({ stage: "connect" })} className="mt-3 h-11 w-full rounded-xl bg-[#c7f284] text-[14px] font-semibold text-[#0b1014]">Connect wallet to open</button>
+                  <button type="button" data-companion="jup-gacha-open" onClick={() => setJup({ stage: "connect" })} className="mt-3 h-11 w-full rounded-xl bg-[#c7f284] text-[14px] font-semibold text-[#0b1014]">Connect wallet to open</button>
                 )}
               </div>
               <button type="button" data-companion="jup-gacha-turbo" onClick={() => setJup({ turbo: !s.turbo })} className="flex w-full items-center justify-between rounded-xl border border-white/[0.06] bg-[#131a20] p-3 text-left">

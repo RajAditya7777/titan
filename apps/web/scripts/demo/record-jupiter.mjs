@@ -154,8 +154,14 @@ async function glide(x, y, ms = 520) {
   mouse = { x, y };
 }
 async function click(sel, { dx = 0, dy = 0, hold = 160 } = {}) {
+  // The page may have scrolled (e.g. after opening packs); a click outside the viewport hits nothing.
+  await page.locator(sel).first().scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
   const r = await rect(sel);
-  if (!r) throw new Error(`not found: ${sel}`);
+  if (!r) {
+    await page.screenshot({ path: path.join(OUT, "fail.png") }).catch(() => {});
+    fs.writeFileSync(path.join(OUT, "fail-voice.json"), JSON.stringify(events, null, 1));
+    throw new Error(`not found: ${sel}`);
+  }
   await glide(r.x + r.w / 2 + dx, r.y + r.h / 2 + dy);
   await sleep(hold);
   await page.mouse.down();
@@ -229,7 +235,38 @@ async function ask(question) {
   await page.keyboard.press("Enter");
   await rampUntilAnswer();
   await frame([PANEL, PET], { pad: 40 });
-  await speakWait();
+  await speakWait(0.2);
+}
+
+/** Astro hops from control to control: the camera follows it and every short line becomes voice-over. */
+const bubbleText = () =>
+  page.evaluate(() => (document.querySelector('[role="status"].absolute > span')?.textContent ?? "").replace(/\s+/g, " ").trim());
+const guiding = async () => (await page.locator('button[aria-label="Close guide"]').count()) > 0;
+async function watchTour(max = 60_000) {
+  const start = now();
+  const ramp = { t0: start, t1: start, speed: 1.3 };
+  events.ramps.push(ramp);
+  for (let i = 0; i < 30 && !(await guiding()); i++) await sleep(100);
+  let last = events.voice.at(-1)?.text ?? "";
+  let gone = 0;
+  while (now() - start < max) {
+    const text = await bubbleText();
+    if (text && text !== last) {
+      voice(text);
+      last = text;
+      if (/^All done/.test(text)) {
+        await frame([PET], { pad: 230, maxZ: 1.75, dur: 450 });
+        await sleep(1300);
+        break;
+      }
+    }
+    if (await guiding()) gone = 0;
+    else if (++gone > 4) break;
+    await frame([PET], { pad: 230, maxZ: 1.75, dur: 450 });
+    await sleep(160);
+  }
+  ramp.t1 = now();
+  await sleep(300);
 }
 
 // 1. A brand-new visitor, on the main swap screen, asks how Jupiter works
@@ -242,6 +279,8 @@ await click('[data-testid="help-nudge"] button:has-text("Yes, please")');
 await sleep(700);
 chapter("They ask: how does the whole thing work?");
 await ask("I'm new here. How does Jupiter work, and which buttons do I press to swap?");
+chapter("Astro shows every button");
+await watchTour();
 await closePopup();
 wide();
 await sleep(500);
@@ -280,23 +319,18 @@ await click('a[title="Gacha"]');
 await page.waitForSelector('[data-companion="jup-gacha-packs"]');
 await sleep(1400);
 await openPopup();
-await ask("How does Gacha work? Tell me which buttons to press.");
+await ask("How does Gacha work? Which buttons do I press?");
+chapter("Astro walks the Gacha page");
+await watchTour();
 await closePopup();
 wide();
 await sleep(600);
 
 // 4. Follow the steps for real
-chapter("Step 1-2: pick a category and a pack");
-await click('button:has-text("Pokémon")');
-await sleep(500);
+chapter("Now open 2 packs for real");
 await frame(['[data-companion="jup-gacha-packs"]'], { pad: 90, maxZ: 1.7 });
 await click('[data-companion="jup-gacha-packs"] button:has-text("Lucky")');
-await sleep(1000);
-chapter("Step 3: check the odds");
-await frame(['[data-companion="jup-gacha-ev"]', 'button:has-text("Statistics")'], { pad: 120, maxZ: 1.6 });
-await click('button:has-text("Statistics")');
-await sleep(1700);
-chapter("Step 4-5: choose 2 packs and open");
+await sleep(700);
 await click('button[aria-label="More packs"]');
 await sleep(600);
 await frame(['[data-companion="jup-gacha-open"]', '[data-companion="jup-gacha-ev"]'], { pad: 90 });
@@ -306,20 +340,26 @@ await sleep(900);
 await click('[data-companion="jup-approve"]');
 wide(900);
 await sleep(1900);
-chapter("Step 6: the pulls flip up");
+chapter("The pulls flip up");
 await frame(['button:has-text("Keep and close")', PET], { pad: 120, maxZ: 1.4, dur: 1000 });
 await sleep(2000);
-chapter("Step 7: sell one back for USDC");
+chapter("Sell one back for USDC");
 await click('button:has-text("Sell back")');
 await follow([PET, 'button:has-text("Keep and close")'], 1800, { pad: 150, maxZ: 1.5 });
 await click('button:has-text("Keep and close")');
 wide();
 await sleep(500);
 chapter("The other card stays in your Collection");
-await click('button:has-text("Collection")');
+// Opening packs scrolls the page; the tabs then sit under the sticky header.
+await page.evaluate(() => {
+  window.scrollTo({ top: 0 });
+  document.querySelectorAll("*").forEach((el) => el.scrollTop > 0 && (el.scrollTop = 0));
+});
+await sleep(500);
+await click('[data-companion="jup-gacha-tabs"] button:has-text("Collection")');
 await sleep(700);
 await frame(["h1", PET], { pad: 120, maxZ: 1.3 });
-await sleep(2200);
+await sleep(4200);
 
 chapter("__end__");
 await sleep(1000);

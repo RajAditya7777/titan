@@ -238,12 +238,19 @@ async function ensureUmbraGuide(input: TurnInput, reply: CompanionReply): Promis
   return planned.workflow ? { ...reply, workflow: planned.workflow, point: undefined } : reply;
 }
 
-/** "How does X work / which buttons do I press" is a question: speak the steps, don't start a walkthrough. */
+/**
+ * "How does X work / which buttons do I press" on Jupiter: Astro shows it instead of reading a paragraph.
+ * One short line of overview, then a pointing tour where it hops to each control with a few words.
+ */
 const ASKS_HOW = /\b(how (does|do|is|are|can|to)|which buttons?|what buttons?|step by step|button by button|where (do|can) i)\b/i;
 function answerOnly(input: TurnInput, reply: CompanionReply): CompanionReply {
-  if (!isJupiter(input.page) || !reply.workflow) return reply;
-  if (!ASKS_HOW.test(input.utterance) || EXPLICIT_GUIDE.test(input.utterance)) return reply;
-  return { ...reply, workflow: undefined };
+  if (!isJupiter(input.page) || !ASKS_HOW.test(input.utterance) || EXPLICIT_GUIDE.test(input.utterance)) return reply;
+  if (/\b(perps?|limit|portfolio|liquidat|leverage)\b/i.test(input.utterance)) return { ...reply, workflow: undefined };
+  const gacha = /\b(gacha|packs?|cards?|pull)\b/i.test(input.utterance) || (input.page === "jup_gacha" && !/\bswap\b/i.test(input.utterance));
+  const id = gacha ? "jup_gacha_howto" : "jup_swap_howto";
+  const first = reply.speech.match(/^[^.!?]*[.!?]/)?.[0]?.trim();
+  const intro = first && first.length <= 160 ? first : gacha ? "Gacha lets you open packs of real graded cards." : "Jupiter finds you the best swap price on Solana.";
+  return { ...reply, speech: `${intro} Watch me, I'll show you the buttons!`, point: undefined, workflow: buildWorkflow(id, {}, input.pageContext ?? {}) };
 }
 
 export async function runTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {

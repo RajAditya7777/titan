@@ -83,7 +83,7 @@ export interface JupState {
   perpSide?: "long" | "short";
 }
 
-export type JupGoal = "tour" | "swap" | "limit" | "perps" | "portfolio" | "gacha";
+export type JupGoal = "tour" | "swap" | "limit" | "perps" | "portfolio" | "gacha" | "swap_howto" | "gacha_howto";
 
 export function planJupiter(goal: JupGoal, params: Record<string, string | undefined>, state: JupState = {}): { title: string; steps: Step[] } {
   const connect: Step[] = state.connected
@@ -97,6 +97,38 @@ export function planJupiter(goal: JupGoal, params: Record<string, string | undef
   const amount = Number(params.amount) > 0 ? String(Number(params.amount)) : goal === "perps" ? "100" : "1";
 
   switch (goal) {
+    // "How does it work / which buttons?": Astro hops to each control and says one short line. Nothing is
+    // filled or clicked; the user just watches the path.
+    case "swap_howto":
+      return {
+        title: "How to swap",
+        steps: [
+          { type: "navigate_to_page", page: "jup_swap" },
+          ...(state.connected ? [] : [{ type: "point" as const, target: "jup-connect" as const, say: "Step 1: tap Connect and pick your wallet." }]),
+          { type: "point", target: "jup-sell-token", say: "This is what you sell. Tap it to pick a token." },
+          { type: "point", target: "jup-sell-amount", say: "Type how much here." },
+          { type: "point", target: "jup-flip", say: "These arrows flip sell and buy." },
+          { type: "point", target: "jup-buy-token", say: "And this is what you get." },
+          { type: "point", target: "jup-quote", say: "Check the rate, route and price impact." },
+          state.connected
+            ? { type: "point", target: "jup-swap-submit", say: "Last: tap Swap, then Approve in your wallet. Done!" }
+            : { type: "point", target: "jup-swap-card", say: "Once connected, the big button turns into Swap. Tap it, then Approve. Done!" },
+        ],
+      };
+    case "gacha_howto":
+      return {
+        title: "How Gacha works",
+        steps: [
+          { type: "navigate_to_page", page: "jup_gacha" },
+          { type: "point", target: "jup-gacha-tabs", say: "Packs to open, Collection for your cards, Marketplace to trade." },
+          { type: "point", target: "jup-gacha-packs", say: "Step 1: pick a pack. Lucky is 100 USDC." },
+          { type: "point", target: "jup-gacha-ev", say: "Expected value: the average pull is worth about the pack price." },
+          { type: "point", target: "jup-gacha-odds", say: "Odds: 75% Common, only 1% Epic. It's luck!" },
+          { type: "point", target: "jup-gacha-count", say: "Step 2: choose how many packs." },
+          { type: "point", target: "jup-gacha-open", say: "Step 3: tap Open and approve. Your real graded card flips up!" },
+          { type: "point", target: "jup-gacha-buyback", say: "Don't love it? Sell it back for 93% within 3 days." },
+        ],
+      };
     case "tour":
       return {
         title: "Tour of Jupiter",

@@ -38,6 +38,8 @@ export const WORKFLOW_IDS = [
   "jup_perps",
   "jup_portfolio",
   "jup_gacha",
+  "jup_swap_howto",
+  "jup_gacha_howto",
 ] as const;
 export type WorkflowId = (typeof WORKFLOW_IDS)[number];
 
@@ -62,6 +64,8 @@ export function buildWorkflow(id: WorkflowId, params: WorkflowParams = {}, pageS
     case "jup_perps":
     case "jup_portfolio":
     case "jup_gacha":
+    case "jup_swap_howto":
+    case "jup_gacha_howto":
       return { id, ...planJupiter(id.slice(4) as never, { ...params }, pageState as JupState) };
     case "umbra_web_tour":
     case "umbra_web_deposit":
