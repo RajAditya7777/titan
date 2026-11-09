@@ -69,7 +69,8 @@ ${GACHA_KNOWLEDGE}
 Rules:
 - Answer only from these facts and what you see. If something isn't covered, say you're not sure rather than guessing.
 - This demo uses a simulated wallet and fixed demo prices. Never ask for keys or seed phrases. You never click, sign or approve: you point, the user acts.
-- Whenever the user wants to DO something you MUST set workflow_id: jup_swap {amount, inputToken, outputToken} | jup_limit {amount, inputToken, outputToken, price} | jup_perps {side: long|short, amount (USDC collateral), leverage} | jup_portfolio | jup_gacha (open a pack). New users or "show me around": jup_tour. Tokens: SOL, USDC, JUP, USDT, BONK, JitoSOL.
+- If the user asks a question, asks you to explain something, or reports a problem ("explain Gacha", "I'm new to Gacha", "why did I get less than the quote?", "my swap failed"), ANSWER it in 3 to 4 short sentences from the facts and what you see, and do NOT set workflow_id. If they ask how something works, "step by step", how to do it, or which buttons to press (even with "I'm new"), the answer MUST be the button-by-button workflow from the facts above, in order, in 6 short sentences and UNDER 90 words in total, naming the real buttons they will see (be terse: one short clause per step, no filler) (for Jupiter in general, the Swap workflow plus a one-line mention of Gacha); do not give a generic overview instead. These are QUESTIONS: never set workflow_id for them and never answer "let me walk you through"; just speak the steps. For "explain X" or "I'm new to X" (with no mention of steps or buttons) give a complete beginner overview: what it is, how it works step by step, the main risk, and one tip.
+- Whenever the user clearly wants to DO or be shown something ("help me swap", "guide me", "show me around", "open a pack for me") you MUST set workflow_id: jup_swap {amount, inputToken, outputToken} | jup_limit {amount, inputToken, outputToken, price} | jup_perps {side: long|short, amount (USDC collateral), leverage} | jup_portfolio | jup_gacha (open a pack). New users or "show me around": jup_tour. Tokens: SOL, USDC, JUP, USDT, BONK, JitoSOL.
 - To show one thing, set point_target to an element id below. Questions get a spoken answer.
 Page: ${input.page} (${PAGES[input.page].title}). Elements here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
 Other Jupiter pages: ${(["jup_swap", "jup_limit", "jup_perps", "jup_gacha", "jup_portfolio"] as const).filter((p) => p !== input.page).join(", ")}
@@ -248,14 +249,34 @@ const UMBRA_WANTS_GUIDE = /\b(deposit|send|pay|swap|withdraw|buy|sell|long|short
  * On Umbra pages an action request always ends in a walkthrough: if the model only talked, the
  * deterministic planner supplies the workflow, and the model's own words are kept.
  */
+/** A question or a problem report ("why did my swap fail?") wants an answer, not a walkthrough. */
+const ASKS_FOR_ANSWER = /^(why|what|how|when|where|which|who|is|are|does|do|can|could|should|explain|tell me|describe)\b|\?\s*$|\b(fail(ed|s|ing)?|wrong|error|problem|issue|stuck|less than|didn'?t|doesn'?t|not working)\b/i;
+const EXPLICIT_GUIDE = /\b(help me|guide me|walk me|show me (around|how to)|let'?s|i want to|take me|tour)\b/i;
+
 async function ensureUmbraGuide(input: TurnInput, reply: CompanionReply): Promise<CompanionReply> {
   if (!seesAndKnows(input.page) || reply.workflow || !UMBRA_WANTS_GUIDE.test(input.utterance)) return reply;
+  if (ASKS_FOR_ANSWER.test(input.utterance.trim()) && !EXPLICIT_GUIDE.test(input.utterance)) return reply;
   const planned = await planWithRules(input.utterance, { page: input.page, runTool: callTool, pageState: input.pageContext });
   return planned.workflow ? { ...reply, workflow: planned.workflow, point: undefined } : reply;
 }
 
+/**
+ * "How does X work / which buttons do I press" on Jupiter: Astro shows it instead of reading a paragraph.
+ * One short line of overview, then a pointing tour where it hops to each control with a few words.
+ */
+const ASKS_HOW = /\b(how (does|do|is|are|can|to)|which buttons?|what buttons?|step by step|button by button|where (do|can) i)\b/i;
+function answerOnly(input: TurnInput, reply: CompanionReply): CompanionReply {
+  if (!isJupiter(input.page) || !ASKS_HOW.test(input.utterance) || EXPLICIT_GUIDE.test(input.utterance)) return reply;
+  if (/\b(perps?|limit|portfolio|liquidat|leverage)\b/i.test(input.utterance)) return { ...reply, workflow: undefined };
+  const gacha = /\b(gacha|packs?|cards?|pull)\b/i.test(input.utterance) || (input.page === "jup_gacha" && !/\bswap\b/i.test(input.utterance));
+  const id = gacha ? "jup_gacha_howto" : "jup_swap_howto";
+  const first = reply.speech.match(/^[^.!?]*[.!?]/)?.[0]?.trim();
+  const intro = first && first.length <= 160 ? first : gacha ? "Gacha lets you open packs of real graded cards." : "Jupiter finds you the best swap price on Solana.";
+  return { ...reply, speech: `${intro} Watch me, I'll show you the buttons!`, point: undefined, workflow: buildWorkflow(id, {}, input.pageContext ?? {}) };
+}
+
 export async function runTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {
-  return keepOnDocs(input, await ensureUmbraGuide(input, await answerTurn(input, provider)));
+  return answerOnly(input, keepOnDocs(input, await ensureUmbraGuide(input, await answerTurn(input, provider))));
 }
 
 async function answerTurn(input: TurnInput, provider: LlmProvider | null): Promise<CompanionReply> {
@@ -339,7 +360,9 @@ export function finalize(raw: unknown, toolCalls: CompanionReply["toolCalls"], p
     const speech = typeof (raw as { speech?: unknown })?.speech === "string" ? (raw as { speech: string }).speech : "Sorry, I got muddled. Could you say that again?";
     return CompanionReplySchema.parse({ speech: speakable(speech).slice(0, 800), toolCalls, engine: "llm" });
   }
-  const a = { ...parsed.data, speech: speakable(parsed.data.speech) };
+  // Explaining a product to a newcomer needs more room than a one-line tip: Jupiter pages get 4 sentences.
+  const roomy = page?.startsWith("jup_");
+  const a = { ...parsed.data, speech: speakable(parsed.data.speech, roomy ? { maxSentences: 8, maxChars: 640 } : undefined) };
   let workflow = a.workflow_id ? buildWorkflow(a.workflow_id, a.workflow_params ?? {}, pageState) : undefined;
 
   if (!workflow && a.custom_steps?.length) {
@@ -383,7 +406,7 @@ const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…`
  * Models often answer in Markdown. Speech synthesis would read "asterisk asterisk", and the bubble
  * would show raw symbols, so the reply is reduced to plain spoken text.
  */
-export function speakable(text: string): string {
+export function speakable(text: string, limits?: { maxSentences: number; maxChars: number }): string {
   const plain = text
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`([^`]*)`/g, "$1")
@@ -394,7 +417,7 @@ export function speakable(text: string): string {
     .replace(/\u2011/g, "-")
     .replace(/\s+/g, " ")
     .trim();
-  return voiceLength(plain) || "Sorry, could you say that again?";
+  return (limits ? voiceLength(plain, limits.maxSentences, limits.maxChars) : voiceLength(plain)) || "Sorry, could you say that again?";
 }
 
 /**
@@ -410,7 +433,8 @@ export function voiceLength(text: string, maxSentences = 3, maxChars = 320): str
     if (out && next.length > maxChars) break;
     out = next;
   }
-  return out.length > 400 ? `${out.slice(0, 397).replace(/\s+\S*$/, "")}…` : out;
+  const hardCap = Math.max(400, maxChars + 80);
+  return out.length > hardCap ? `${out.slice(0, hardCap - 3).replace(/\s+\S*$/, "")}…` : out;
 }
 
 /**

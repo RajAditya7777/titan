@@ -136,7 +136,7 @@ export function perpProblem(s: JupStore): string | null {
 /** Runs the approved action after the (simulated) wallet signs. */
 export async function confirmJup() {
   const s = getJup();
-  petReact("hop", "Counting down… 3, 2, 1 🚀");
+  petReact("launch", "3, 2, 1… liftoff! 🚀");
   setJup({ stage: "submitting" });
   await sleep(1400);
   if (s.review === "swap") {

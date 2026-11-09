@@ -26,7 +26,8 @@ const PATTERNS: [ControlCommand["kind"], RegExp][] = [
   ["next", /^(next|skip( this)?( step)?|continue|go on|move on|carry on|done|ok(ay)? next)\b/],
   ["back", /^(go back|back|previous( step)?)\b/],
   ["restart", /^(start (again|over)|restart|from the (top|beginning))\b/],
-  ["explain", /^(explain( this| that)?|what('?s| is| does) (this|that)( mean)?|what does (this|that) mean|i don'?t understand)\b/],
+  // Anchored: a bare "explain" / "explain this" is the control command; "explain Gacha, I'm new" is a question for the AI.
+  ["explain", /^(explain( this| that| it)?|what('?s| is| does) (this|that)( mean)?|what does (this|that) mean|i don'?t understand)\s*[.!?]*$/],
   ["confirm", /^(yes|yeah|yep|sure|please do|do it|go ahead|fill it( in)?|ok(ay)?|confirm|correct|sounds good)\b/],
   ["decline", /^(no|nope|don'?t|not now|i'?ll do it)\b/],
 ];

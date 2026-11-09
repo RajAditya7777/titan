@@ -222,3 +222,13 @@ describe("LLM adapters", () => {
     expect(speakable("**Current APY**: ≈ 1.7 % — see [docs](https://x.y)\n- variable")).toBe("Current APY: ≈ 1.7 % — see docs variable");
   });
 });
+
+describe("control commands", () => {
+  it("treats a bare 'explain' as a command but sends real questions to the AI", async () => {
+    const { parseControlCommand } = await import("@/lib/companion/commands");
+    expect(parseControlCommand("explain")?.kind).toBe("explain");
+    expect(parseControlCommand("Explain this")?.kind).toBe("explain");
+    expect(parseControlCommand("Explain Gacha, I am new")).toBeNull();
+    expect(parseControlCommand("explain how limit orders work")).toBeNull();
+  });
+});

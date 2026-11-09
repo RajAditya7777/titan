@@ -566,6 +566,8 @@ export function CompanionProvider({ children }: { children: ReactNode }) {
         if (reply.workflow) {
           if (runRef.current) cancel();
           await speak(reply.speech, { log: false });
+          // On Jupiter the small popup steps aside for the walkthrough and stays closed after it.
+          if (pageRef.current.startsWith("jup_")) setPanelOpen(false);
           startWorkflow(reply.workflow);
         } else if (reply.point) {
           await highlight(reply.point.target as ElementId, reply.point.say ?? reply.speech);

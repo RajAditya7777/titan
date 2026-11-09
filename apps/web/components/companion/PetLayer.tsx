@@ -116,7 +116,9 @@ export function PetLayer() {
     };
     window.addEventListener("keydown", wake);
     const t = setInterval(() => {
-      if (Date.now() - lastActivity.current > SLEEP_AFTER_MS) setSleeping(true);
+      // __PET_SLEEP_MS lets a screen recording nap quickly; normal use waits the full time.
+      const after = (window as unknown as { __PET_SLEEP_MS?: number }).__PET_SLEEP_MS ?? SLEEP_AFTER_MS;
+      if (Date.now() - lastActivity.current > after) setSleeping(true);
     }, 2_000);
     return () => {
       window.removeEventListener("keydown", wake);
@@ -212,6 +214,8 @@ export function PetLayer() {
       settle = setTimeout(() => {
         setReaction(null);
         setQuip(null);
+        // An earlier control visit's timer was cleared above; without this the pet would stay parked there.
+        setVisit(null);
       }, 4_200);
     };
     window.addEventListener(PET_REACT_EVENT, onOutcome);
@@ -238,7 +242,8 @@ export function PetLayer() {
     if (reduceMotion) return;
     const t = setInterval(() => {
       const l = live.current;
-      if (l.busy || l.panelOpen || l.hover || l.sleeping) return setRoamX(null);
+      // __PET_NO_ROAM keeps screen recordings deterministic (the pet otherwise wanders at random).
+      if (l.busy || l.panelOpen || l.hover || l.sleeping || (window as unknown as { __PET_NO_ROAM?: boolean }).__PET_NO_ROAM) return setRoamX(null);
       const w = window.innerWidth;
       setRoamX((x) => (x == null && Math.random() < 0.7 ? 16 + Math.random() * Math.max(0, w - PET.width - 32) : null));
     }, 9_000);
@@ -251,7 +256,8 @@ export function PetLayer() {
   /** A different reaction every hover, never the same twice in a row. */
   const react = () => {
     if (petState !== "idle") return;
-    const choices = REACTIONS.filter((r) => r !== lastReaction.current);
+    // "launch" is the Approve moment, not a hover trick.
+    const choices = REACTIONS.filter((r) => r !== lastReaction.current && r !== "launch");
     const next = choices[Math.floor(Math.random() * choices.length)]!;
     lastReaction.current = next;
     setReaction(next);
@@ -370,7 +376,8 @@ export function PetLayer() {
       {/* Speech bubble (also the live caption for TTS) */}
       <AnimatePresence>
         {/* At home with the panel open, the panel already shows the words; a bubble would cover them. */}
-        {bubble && (guide || (petState !== "idle" && !panelOpen)) && (
+        {/* On Jupiter the small help popup already shows the answer; a second bubble would repeat it. */}
+        {bubble && !(panelOpen && !run && page.startsWith("jup_")) && (guide || (petState !== "idle" && !panelOpen)) && (
           <motion.div
             key="bubble"
             role="status"
@@ -429,7 +436,11 @@ export function PetLayer() {
               opacity: 1,
               y: 0,
               scale: 1,
-              left: Math.max(8, Math.min(pos.x + PET.width / 2, viewport.width - 8)),
+              // translateX(-50%) centres the quip on this point, so keep half its (estimated) width inside the screen.
+              left: Math.max(
+                8 + Math.min(130, quip.length * 3.6 + 16),
+                Math.min(pos.x + PET.width / 2, viewport.width - 8 - Math.min(130, quip.length * 3.6 + 16)),
+              ),
               top: pos.y - 6,
             }}
             exit={{ opacity: 0, y: -6, scale: 0.9 }}

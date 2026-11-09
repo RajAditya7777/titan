@@ -36,6 +36,14 @@ export function liquidationPrice(side: "long" | "short", entry: number, leverage
   return side === "long" ? entry * (1 - move) : entry * (1 + move);
 }
 
+/** The few quick asks shown in Astro's small help popup. */
+export const JUP_QUICK = [
+  "I'm new. How does Jupiter work?",
+  "How do I swap, button by button?",
+  "How does Gacha work? Which buttons?",
+  "Help me swap 1 SOL for USDC",
+];
+
 export const JUP_SUGGESTIONS = [
   "What is Gacha and how does it work?",
   "I'm new. Show me around Jupiter",
@@ -55,6 +63,13 @@ export const JUPITER_KNOWLEDGE = `JUPITER FACTS (jup.ag, "The Home of Onchain Fi
 - Portfolio: track holdings, DeFi positions, yield, PnL and airdrops across 198 Solana protocols; view a wallet address or demo wallets (DeFi whale, JUP staker, Airdrop farmer); multi-wallet groups, activity history, address book, airdrop checker, yield estimate.
 - Other products in the sidebar: Spot (token markets, stocks), Predict (prediction markets), Gacha, Bridge (50+ chains, beta), YOLO (beta), Lend (Earn vaults, Multiply), Offerbook, Stake SOL, Stake JUP, Send (crypto as a link), Deposit, Mobile app.
 - JUP is Jupiter's token; stakers vote in the DAO.
+- Common problems and what usually causes them (general guidance, not a diagnosis of a specific transaction):
+  * "I got less than the quote": the quote is an estimate. Price impact (your size versus liquidity), slippage tolerance and fees all come off the output, and the price can move between quote and execution. Check the price impact row, try a smaller size or split the trade, and refresh the quote before swapping. In Ultra mode Jupiter picks slippage for you.
+  * "My swap failed": typical causes are not enough SOL left for network fees (and rent for a new token account), the price moving past your slippage while the transaction landed, a stale quote, network congestion, or the wallet approval being rejected or timing out. Keep a little SOL, refresh the quote and retry.
+  * "My limit order hasn't filled": it only fills when the market reaches your price or better. It may fill in parts, it can expire, and stablecoins can't be the trigger token.
+  * "I was liquidated on perps": higher leverage puts the liquidation price closer to entry; if the mark price reaches it, the position closes and collateral is lost. Use lower leverage and watch the liquidation price.
+  * Scams: never share a seed phrase, check the site address, and approve only what you expect to see.
+- Swap workflow, button by button (this is the order to explain it in): 1) Tap Connect at the top right, then pick the demo wallet. 2) On the Swap card, check the Sell token (top) and the Buy token (bottom); tap a token to change it, or the arrows between them to flip. 3) Type the amount in the Sell box. A red warning means you typed more than your balance. 4) Read the quote: the amount you receive, the route and the price impact. 5) Tap Swap, review the details, then tap Approve to sign in your wallet. 6) A success message confirms it and your balances update. Astro never signs for you.
 - Safety: slippage protects you from price moves; price impact grows with trade size versus liquidity. Never share a seed phrase. Every transaction is approved in the user's own wallet.`;
 
 export interface JupState {
@@ -68,7 +83,7 @@ export interface JupState {
   perpSide?: "long" | "short";
 }
 
-export type JupGoal = "tour" | "swap" | "limit" | "perps" | "portfolio" | "gacha";
+export type JupGoal = "tour" | "swap" | "limit" | "perps" | "portfolio" | "gacha" | "swap_howto" | "gacha_howto";
 
 export function planJupiter(goal: JupGoal, params: Record<string, string | undefined>, state: JupState = {}): { title: string; steps: Step[] } {
   const connect: Step[] = state.connected
@@ -82,6 +97,38 @@ export function planJupiter(goal: JupGoal, params: Record<string, string | undef
   const amount = Number(params.amount) > 0 ? String(Number(params.amount)) : goal === "perps" ? "100" : "1";
 
   switch (goal) {
+    // "How does it work / which buttons?": Astro hops to each control and says one short line. Nothing is
+    // filled or clicked; the user just watches the path.
+    case "swap_howto":
+      return {
+        title: "How to swap",
+        steps: [
+          { type: "navigate_to_page", page: "jup_swap" },
+          ...(state.connected ? [] : [{ type: "point" as const, target: "jup-connect" as const, say: "Step 1: tap Connect and pick your wallet." }]),
+          { type: "point", target: "jup-sell-token", say: "This is what you sell. Tap it to pick a token." },
+          { type: "point", target: "jup-sell-amount", say: "Type how much here." },
+          { type: "point", target: "jup-flip", say: "These arrows flip sell and buy." },
+          { type: "point", target: "jup-buy-token", say: "And this is what you get." },
+          { type: "point", target: "jup-quote", say: "Check the rate, route and price impact." },
+          state.connected
+            ? { type: "point", target: "jup-swap-submit", say: "Last: tap Swap, then Approve in your wallet. Done!" }
+            : { type: "point", target: "jup-swap-card", say: "Once connected, the big button turns into Swap. Tap it, then Approve. Done!" },
+        ],
+      };
+    case "gacha_howto":
+      return {
+        title: "How Gacha works",
+        steps: [
+          { type: "navigate_to_page", page: "jup_gacha" },
+          { type: "point", target: "jup-gacha-tabs", say: "Packs to open, Collection for your cards, Marketplace to trade." },
+          { type: "point", target: "jup-gacha-packs", say: "Step 1: pick a pack. Lucky is 100 USDC." },
+          { type: "point", target: "jup-gacha-ev", say: "Expected value: the average pull is worth about the pack price." },
+          { type: "point", target: "jup-gacha-odds", say: "Odds: 75% Common, only 1% Epic. It's luck!" },
+          { type: "point", target: "jup-gacha-count", say: "Step 2: choose how many packs." },
+          { type: "point", target: "jup-gacha-open", say: "Step 3: tap Open and approve. Your real graded card flips up!" },
+          { type: "point", target: "jup-gacha-buyback", say: "Don't love it? Sell it back for 93% within 3 days." },
+        ],
+      };
     case "tour":
       return {
         title: "Tour of Jupiter",

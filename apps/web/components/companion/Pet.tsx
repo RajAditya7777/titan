@@ -31,7 +31,7 @@ interface Props {
 }
 
 /** No reaction turns the body around or over: the pet is flat art, and showing its edge breaks the illusion. */
-export const REACTIONS = ["wave", "clap", "wiggle", "giggle", "hop", "hearts", "hi", "cheer", "roll"] as const;
+export const REACTIONS = ["wave", "clap", "wiggle", "giggle", "hop", "hearts", "hi", "cheer", "roll", "launch"] as const;
 export type Reaction = (typeof REACTIONS)[number];
 
 /** Eyes: 2x2 cells each at these columns, row 6. */
@@ -64,6 +64,8 @@ const REACTION_ANIM: Record<Reaction, TargetAndTransition> = {
   hearts: { scale: [1, 1.08, 1], y: -4, transition: { duration: 0.6 } },
   hi: { y: [0, 3, -6, 0], scaleY: [1, 0.94, 1.04, 1], transition: { duration: 0.7, ease: "easeInOut" } },
   cheer: { y: [0, 3, -12, 0, -4, 0], scaleY: [1, 0.92, 1.05, 0.95, 1], transition: { duration: 0.8 } },
+  // Crouch, spring up, hang, land: the pup has no thrusters, so it's a big jump.
+  launch: { y: [0, 5, -34, -34, 0], scaleY: [1, 0.88, 1.08, 1.02, 0.9], transition: { duration: 1.1, times: [0, 0.18, 0.45, 0.65, 1] } },
   // Spins on the spot: the classic sprite turn (squeeze to edge-on, flip, back), with a little hop.
   roll: { scaleX: [1, 0.12, -1, 0.12, 1], y: [0, -6, -8, -6, 0], transition: { duration: 0.9, ease: "easeInOut" } },
 };
