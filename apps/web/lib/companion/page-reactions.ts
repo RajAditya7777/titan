@@ -90,6 +90,32 @@ export function respondTo(e: PageEvent): PetResponse | null {
       return { reaction: "hi", quip: "Good choice", visit: true };
     case "jup-portfolio-demo":
       return { reaction: "hearts", quip: "Let's peek inside!", visit: true };
+    case "titan-pro-token":
+      return { reaction: "giggle", quip: "New market, let's look 👀", visit: true };
+    case "titan-pro-category":
+      return { reaction: "hop", visit: false };
+    case "titan-pro-star":
+      return { reaction: "hearts", quip: "Watchlisted ⭐", visit: true };
+    case "titan-pro-timeframe":
+      return { reaction: "hi", quip: "Zooming the candles", visit: true };
+    case "titan-pro-indicators":
+      return { reaction: "clap", quip: "Ooh, indicators", visit: true };
+    case "titan-pro-mode-market":
+      return { reaction: "hop", quip: "Best price, right now", visit: true };
+    case "titan-pro-mode-limit":
+      return { reaction: "hi", quip: "Patience pays", visit: true };
+    case "titan-pro-mode-slice":
+      return { reaction: "giggle", quip: "Slice it, less impact 🍕", visit: true };
+    case "titan-pro-side-buy":
+      return { reaction: "cheer", quip: "Buying! 📈", visit: true };
+    case "titan-pro-side-sell":
+      return { reaction: "wiggle", quip: "Taking profit? 📉", visit: true };
+    case "titan-candlestick-chart":
+      return { reaction: "hi", quip: "Reading the candles…", visit: false };
+    case "titan-holdings-tab":
+    case "titan-open-orders-tab":
+    case "titan-order-history-tab":
+      return { reaction: "hop", visit: false };
     case "titan-switch-tokens":
       return { reaction: "clap", quip: "Flip!", visit: true };
     case "titan-refresh-quote":

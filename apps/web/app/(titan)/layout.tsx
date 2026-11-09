@@ -24,7 +24,7 @@ export default function TitanLayout({ children }: { children: React.ReactNode })
         <TitanHeader />
 
         {/* Live Marquee Ticker Bar */}
-        <HideOn prefixes={["/titan/rewards"]}>
+        <HideOn prefixes={["/titan/rewards", "/titan/pro"]}>
           <TitanTickerBar />
         </HideOn>
 

@@ -157,6 +157,16 @@ export const ELEMENTS = {
   "titan-connect-wallet": { page: "global", kind: "button", label: "Connect Wallet", description: "Connect Solana wallet to start trading or viewing orders." },
 
   // Titan Pro View Elements
+  "titan-pro-token": { page: "titan_pro", kind: "button", label: "Token list", description: "Pick a market to chart and trade." },
+  "titan-pro-category": { page: "titan_pro", kind: "nav", label: "Trending / Stocks / Memes / DART", description: "Filter the token list; DART shows tokens routed by Titan's on-chain DART." },
+  "titan-pro-star": { page: "titan_pro", kind: "button", label: "Watchlist star", description: "Add or remove this token from your watchlist." },
+  "titan-pro-timeframe": { page: "titan_pro", kind: "button", label: "Timeframe", description: "Candle size: 1m, 5m, 15m or 1h." },
+  "titan-pro-indicators": { page: "titan_pro", kind: "button", label: "Indicators", description: "Turn the EMA ribbon overlay on or off." },
+  "titan-pro-mode-market": { page: "titan_pro", kind: "nav", label: "Market", description: "Trade now at the best routed price." },
+  "titan-pro-mode-limit": { page: "titan_pro", kind: "nav", label: "Limit", description: "A conditional order that fills when your price is hit." },
+  "titan-pro-mode-slice": { page: "titan_pro", kind: "nav", label: "Slice", description: "Split a big order into smaller pieces over time to reduce price impact." },
+  "titan-pro-side-buy": { page: "titan_pro", kind: "button", label: "Buy", description: "Buy the selected token." },
+  "titan-pro-side-sell": { page: "titan_pro", kind: "button", label: "Sell", description: "Sell the selected token." },
   "titan-search-input": { page: "titan_pro", kind: "input", label: "Search Asset", description: "Search for Solana tokens by name, symbol, or contract address." },
   "titan-candlestick-chart": { page: "titan_pro", kind: "section", label: "Candlestick Chart", description: "Interactive price chart with OHLC candlestick data, volume, and indicators." },
   "titan-holdings-tab": { page: "titan_pro", kind: "button", label: "Holdings Tab", description: "View your current token balances and portfolio allocations." },

@@ -8,6 +8,7 @@ import type { ChatMessage, ContentPart, FunctionTool, LlmProvider } from "./prov
 import { UMBRA_KNOWLEDGE } from "@/lib/products/umbra/web";
 import { JUPITER_KNOWLEDGE } from "@/lib/products/jupiter/web";
 import { GACHA_KNOWLEDGE } from "@/lib/products/jupiter/gacha";
+import { TITAN_KNOWLEDGE } from "@/lib/products/titan/knowledge";
 import { planWithRules } from "./rules";
 import { getTitanPromptFragment } from "@/lib/products/titan/prompt";
 
@@ -36,7 +37,27 @@ export interface TurnInput {
 const isUmbraWeb = (page: PageId) => page === "umbra_home" || page === "umbra_app";
 const isJupiter = (page: PageId) => page.startsWith("jup_");
 /** Products that answer from knowledge + what they see, with no MCP tool round-trips. */
-const seesAndKnows = (page: PageId) => isUmbraWeb(page) || isJupiter(page);
+const isTitan = (page: PageId) => page.startsWith("titan_");
+const seesAndKnows = (page: PageId) => isUmbraWeb(page) || isJupiter(page) || isTitan(page);
+
+function titanPrompt(input: TurnInput) {
+  const context = formatPageContext(input.pageContext);
+  return `You are Milo, a small pixel fox in Titan's gold who lives on titan.exchange and helps people trade on Titan, the Solana meta-aggregator.
+Speak warmly and plainly: 1-3 short sentences, no markdown, no URLs, no hype, no price predictions or financial advice.
+You can SEE the user's screen: when a screenshot is attached, look at it and refer to what is actually there (the token, price, chart, which order tab is open, amounts, warnings). The visible page text and live page data are below too.
+${TITAN_KNOWLEDGE}
+
+Rules:
+- Answer only from these facts and what you see. If something isn't covered, say you're not sure rather than guessing.
+- This demo uses a simulated wallet and fixed demo prices. Never ask for keys or seed phrases. You never click, sign or approve: you point, the user acts.
+- Whenever the user wants to DO something you MUST set workflow_id: titan_swap {amount, inputToken, outputToken} for buys, sells and swaps (amount is ALWAYS how much of inputToken is paid: "buy 2 SOL with USDC" means inputToken USDC, outputToken SOL, amount = 2 x the SOL price shown, e.g. "187.52"; "sell 2 SOL" means inputToken SOL, amount "2") | titan_limit {amount} for limit or conditional orders. New users, "show me around" or "how does Pro work": titan_tour.
+- To show one thing, set point_target to an element id below. Questions get a spoken answer.
+Page: ${input.page} (${PAGES[input.page].title}). Elements here: ${elementsOnPage(input.page).map((id) => `${id} (${ELEMENTS[id].label})`).join(", ")}
+Other Titan pages: ${siteMap(input.page).split("; ").filter((x) => x.startsWith("titan_")).join("; ")}
+${context ? `${context}\n` : ""}Typed fields: ${JSON.stringify(input.fields)}
+${input.pageText ? `Visible page text:\n"""${input.pageText}"""` : ""}
+Always finish with companion_respond.`;
+}
 
 function jupiterPrompt(input: TurnInput) {
   return `You are Astro, a curious astronaut cat floating around jup.ag who helps people use Jupiter on Solana.
@@ -178,6 +199,7 @@ function formatPageContext(ctx?: Record<string, unknown>): string {
 function systemPrompt(input: TurnInput) {
   if (isUmbraWeb(input.page)) return umbraWebPrompt(input);
   if (isJupiter(input.page)) return jupiterPrompt(input);
+  if (isTitan(input.page)) return titanPrompt(input);
   if (input.page === "umbra" || /\b(umbra|nimbus|shield|unshield|stealth|private send|private transfer|confidential)\b/i.test(input.utterance)) {
     return `You are Milo, a friendly 3D puppy companion guide for Umbra Privacy (Nimbus Protocol on Solana, Simulated Summit Demo).
 Speak warmly, faithfully and briefly (1-3 sentences, plain words, no markdown or URLs).
